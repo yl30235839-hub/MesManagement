@@ -1,14 +1,21 @@
-import React from 'react';
+
+import React, { useState } from 'react';
 import { MOCK_LINES } from '../constants';
-import { MachineStatus } from '../types';
-import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
-import { PlayCircle, StopCircle, AlertTriangle, Settings, Plus, Monitor } from 'lucide-react';
+import { MachineStatus, ProductionLine } from '../types';
+import { PlayCircle, StopCircle, AlertTriangle, Settings, Plus, Monitor, X } from 'lucide-react';
 
 interface LineManagementProps {
   onViewEquipment: (lineId: string) => void;
 }
 
 const LineManagement: React.FC<LineManagementProps> = ({ onViewEquipment }) => {
+  // State for lines list to allow adding new ones
+  const [lines, setLines] = useState<ProductionLine[]>(MOCK_LINES);
+  
+  // Modal State
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [newLineData, setNewLineData] = useState({ name: '', description: '', category: 'Vulkan-A' });
+
   const getStatusColor = (status: MachineStatus) => {
     switch (status) {
       case MachineStatus.Running: return 'bg-green-100 text-green-700 border-green-200';
@@ -28,26 +35,34 @@ const LineManagement: React.FC<LineManagementProps> = ({ onViewEquipment }) => {
     }
   };
 
-  // Mock chart data
-  const chartData = [
-    { name: '08:00', output: 400 },
-    { name: '09:00', output: 300 },
-    { name: '10:00', output: 550 },
-    { name: '11:00', output: 480 },
-    { name: '12:00', output: 200 },
-    { name: '13:00', output: 450 },
-    { name: '14:00', output: 500 },
-  ];
+  const handleAddLine = () => {
+    if (!newLineData.name.trim()) return;
+
+    const newLine: ProductionLine = {
+      id: `L${Math.floor(Math.random() * 10000)}`,
+      factoryId: 'F1', // Default factory
+      name: newLineData.name,
+      description: newLineData.description,
+      category: newLineData.category,
+      status: MachineStatus.Stopped,
+      outputPerHour: 0,
+      targetOutput: 1000, // Default target
+    };
+
+    setLines([...lines, newLine]);
+    setIsModalOpen(false);
+    setNewLineData({ name: '', description: '', category: 'Vulkan-A' });
+  };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 relative">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Side: Line List */}
         <div className="lg:col-span-2 space-y-4">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-lg font-bold text-slate-800">工廠生產綫列表</h3>
             <button 
-              onClick={() => alert('新增產綫功能開發中')} 
+              onClick={() => setIsModalOpen(true)} 
               className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center shadow-sm transition-colors"
             >
               <Plus size={16} className="mr-1" /> 新增產綫
@@ -61,15 +76,21 @@ const LineManagement: React.FC<LineManagementProps> = ({ onViewEquipment }) => {
           </div>
 
           <div className="grid gap-4">
-            {MOCK_LINES.map((line) => (
+            {lines.map((line) => (
               <div key={line.id} className="bg-white rounded-xl p-5 shadow-sm border border-slate-200 hover:shadow-md transition-shadow">
                 <div className="flex justify-between items-start">
                   <div>
                     <div className="flex items-center space-x-3">
                       <h4 className="text-lg font-bold text-slate-800">{line.name}</h4>
                       <span className="text-xs font-mono text-slate-400 bg-slate-100 px-2 py-0.5 rounded">ID: {line.id}</span>
+                      {line.category && (
+                        <span className="text-xs font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-100">{line.category}</span>
+                      )}
                     </div>
-                    <p className="text-sm text-slate-500 mt-1">所屬工廠: {line.factoryId}</p>
+                    {/* Removed Factory ID display as requested */}
+                    {line.description && (
+                      <p className="text-xs text-slate-400 mt-2 italic">{line.description}</p>
+                    )}
                   </div>
                   <div className={`px-3 py-1 rounded-full text-xs font-bold border flex items-center ${getStatusColor(line.status)}`}>
                     {getStatusIcon(line.status)}
@@ -98,7 +119,7 @@ const LineManagement: React.FC<LineManagementProps> = ({ onViewEquipment }) => {
                 </div>
                 
                 <div className="mt-4 flex justify-end space-x-2">
-                  <button className="px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded border border-slate-200">查看排程</button>
+                  {/* Removed View Schedule button */}
                   <button 
                     onClick={() => onViewEquipment(line.id)}
                     className="px-3 py-1.5 text-xs font-medium text-white bg-slate-700 hover:bg-slate-800 rounded border border-slate-700 flex items-center"
@@ -112,25 +133,11 @@ const LineManagement: React.FC<LineManagementProps> = ({ onViewEquipment }) => {
           </div>
         </div>
 
-        {/* Right Side: Charts */}
+        {/* Right Side: AI Prediction Only */}
         <div className="space-y-6">
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-200 h-80">
-            <h3 className="text-sm font-bold text-slate-700 mb-4">實時產能趨勢 (Line A)</h3>
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                <XAxis dataKey="name" axisLine={false} tickLine={false} fontSize={12} tick={{fill: '#64748b'}} />
-                <YAxis axisLine={false} tickLine={false} fontSize={12} tick={{fill: '#64748b'}} />
-                <Tooltip 
-                  cursor={{fill: '#f1f5f9'}}
-                  contentStyle={{borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}}
-                />
-                <Bar dataKey="output" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={30} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
+          {/* Removed Real-time Capacity Trend Chart */}
           
-          <div className="bg-gradient-to-br from-indigo-900 to-slate-900 rounded-xl p-6 text-white shadow-lg">
+          <div className="bg-gradient-to-br from-indigo-900 to-slate-900 rounded-xl p-6 text-white shadow-lg sticky top-6">
             <h3 className="text-lg font-bold mb-2">AI 預測分析</h3>
             <p className="text-indigo-200 text-sm mb-4">基於當前運行數據，系統檢測到 Line B 可能在 4 小時後出現供料瓶頸。</p>
             <div className="flex items-center justify-between mt-6">
@@ -140,6 +147,89 @@ const LineManagement: React.FC<LineManagementProps> = ({ onViewEquipment }) => {
           </div>
         </div>
       </div>
+
+      {/* Add Line Modal */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+              <h3 className="font-bold text-lg text-slate-800">新增生產綫</h3>
+              <button 
+                onClick={() => setIsModalOpen(false)}
+                className="text-slate-400 hover:text-slate-600 transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  類別 <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={newLineData.category}
+                  onChange={(e) => setNewLineData({...newLineData, category: e.target.value})}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm bg-white"
+                >
+                  <option value="Vulkan-A">Vulkan-A</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  綫體名稱 <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={newLineData.name}
+                  onChange={(e) => setNewLineData({...newLineData, name: e.target.value})}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                  placeholder="例如: SMT Assembly Line 3"
+                  autoFocus
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  功能描述
+                </label>
+                <textarea
+                  value={newLineData.description}
+                  onChange={(e) => setNewLineData({...newLineData, description: e.target.value})}
+                  rows={3}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm resize-none"
+                  placeholder="簡要描述該產綫的主要功能或生產品類..."
+                />
+              </div>
+
+              <div className="bg-blue-50 p-3 rounded-lg border border-blue-100 text-xs text-blue-700">
+                <p>新增的產綫將默認設置爲 "STOPPED" 狀態，並分配默認產能目標。請在創建後進行詳細配置。</p>
+              </div>
+            </div>
+
+            <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex justify-end space-x-3">
+              <button 
+                onClick={() => setIsModalOpen(false)}
+                className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-200 rounded-lg transition-colors"
+              >
+                取消
+              </button>
+              <button 
+                onClick={handleAddLine}
+                disabled={!newLineData.name.trim()}
+                className={`px-4 py-2 text-sm font-medium text-white rounded-lg transition-colors shadow-sm
+                  ${newLineData.name.trim() 
+                    ? 'bg-blue-600 hover:bg-blue-700' 
+                    : 'bg-blue-400 cursor-not-allowed opacity-70'
+                  }`}
+              >
+                確定新增
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

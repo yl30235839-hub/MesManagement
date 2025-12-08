@@ -1,3 +1,4 @@
+
 export enum MachineStatus {
   Running = 'RUNNING',
   Stopped = 'STOPPED',
@@ -18,6 +19,8 @@ export interface ProductionLine {
   id: string;
   factoryId: string;
   name: string;
+  description?: string;
+  category?: string;
   status: MachineStatus;
   outputPerHour: number;
   targetOutput: number;
@@ -28,10 +31,11 @@ export interface Equipment {
   lineId: string;
   name: string;
   type: string;
+  description?: string;
   status: MachineStatus;
   temperature: number;
   vibration: number;
   lastMaintenance: string;
 }
 
-export type PageView = 'LOGIN' | 'LINES' | 'EQUIPMENT' | '3D_VIEW';
+export type PageView = 'LOGIN' | 'LINES' | 'EQUIPMENT' | '3D_VIEW' | 'DEVICE_SETTINGS';

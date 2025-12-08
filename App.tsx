@@ -4,12 +4,14 @@ import LoginPage from './components/LoginPage';
 import LineManagement from './components/LineManagement';
 import EquipmentManagement from './components/EquipmentManagement';
 import Line3DView from './components/Line3DView';
+import DeviceSettings from './components/DeviceSettings';
 import { PageView } from './types';
 
 const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentPage, setCurrentPage] = useState<PageView>('LINES');
   const [selectedLineId, setSelectedLineId] = useState<string | null>(null);
+  const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null);
 
   const handleLogin = () => {
     setIsAuthenticated(true);
@@ -19,12 +21,13 @@ const App: React.FC = () => {
     setIsAuthenticated(false);
     setCurrentPage('LINES');
     setSelectedLineId(null);
+    setSelectedDeviceId(null);
   };
 
   const handleNavigate = (page: PageView) => {
     setCurrentPage(page);
-    // Clear selection if navigating away from equipment view via sidebar (if added back later)
-    if (page !== 'EQUIPMENT') {
+    // Clear selection if navigating away from specific views
+    if (page !== 'EQUIPMENT' && page !== 'DEVICE_SETTINGS') {
       setSelectedLineId(null);
     }
   };
@@ -34,12 +37,24 @@ const App: React.FC = () => {
     setCurrentPage('EQUIPMENT');
   };
 
+  const handleMaintainDevice = (deviceId: string) => {
+    setSelectedDeviceId(deviceId);
+    setCurrentPage('DEVICE_SETTINGS');
+  }
+
+  const handleBackToEquipment = () => {
+    setCurrentPage('EQUIPMENT');
+    setSelectedDeviceId(null);
+  }
+
   const renderContent = () => {
     switch (currentPage) {
       case 'LINES':
         return <LineManagement onViewEquipment={handleViewEquipment} />;
       case 'EQUIPMENT':
-        return <EquipmentManagement lineId={selectedLineId} />;
+        return <EquipmentManagement lineId={selectedLineId} onMaintainDevice={handleMaintainDevice} />;
+      case 'DEVICE_SETTINGS':
+        return <DeviceSettings deviceId={selectedDeviceId} onBack={handleBackToEquipment} />;
       case '3D_VIEW':
         return <Line3DView />;
       default:

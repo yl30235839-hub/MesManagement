@@ -1,8 +1,9 @@
+
 import React, { useRef, useState } from 'react';
 import { Canvas, useFrame, ThreeEvent } from '@react-three/fiber';
 import { OrbitControls, Text, Grid, PerspectiveCamera } from '@react-three/drei';
 import * as THREE from 'three';
-import { X, Thermometer, Activity, Clock, Cpu, CheckCircle, AlertTriangle, AlertCircle } from 'lucide-react';
+import { X, Thermometer, Activity, Clock, Cpu, CheckCircle, AlertTriangle, AlertCircle, Maximize2, Minimize2 } from 'lucide-react';
 
 // --- Data Types & Mock Data ---
 
@@ -201,6 +202,7 @@ const FactoryScene: React.FC<{
 
 const Line3DView: React.FC = () => {
   const [selectedMachine, setSelectedMachine] = useState<MachineData | null>(null);
+  const [isMaximized, setIsMaximized] = useState(false);
 
   const handleMachineClick = (data: MachineData) => {
     setSelectedMachine(data);
@@ -229,7 +231,11 @@ const Line3DView: React.FC = () => {
   };
 
   return (
-    <div className="h-[calc(100vh-140px)] bg-slate-100 rounded-xl overflow-hidden border border-slate-300 relative shadow-inner flex">
+    <div 
+      className={`bg-slate-100 overflow-hidden border border-slate-300 relative shadow-inner flex transition-all duration-300
+        ${isMaximized ? 'fixed inset-0 z-50 rounded-none' : 'h-[calc(100vh-140px)] rounded-xl'}
+      `}
+    >
       <div className="flex-1 relative">
         <div className="absolute top-4 left-4 z-10 bg-white/90 backdrop-blur-sm p-4 rounded-lg shadow-lg pointer-events-none">
           <h3 className="font-bold text-slate-800">Assembly Line A - Live Digital Twin</h3>
@@ -237,6 +243,17 @@ const Line3DView: React.FC = () => {
              <p className="flex items-center"><span className="w-2 h-2 bg-green-500 rounded-full mr-2"></span> System Online</p>
              <p className="flex items-center"><span className="w-2 h-2 bg-blue-500 rounded-full mr-2"></span> 450 Units/Hr</p>
           </div>
+        </div>
+
+        {/* Maximize/Minimize Button */}
+        <div className="absolute top-4 right-4 z-10">
+          <button 
+            onClick={() => setIsMaximized(!isMaximized)}
+            className="p-2 bg-white/90 backdrop-blur-sm rounded-lg shadow-lg hover:bg-white text-slate-700 transition-colors"
+            title={isMaximized ? "Restore" : "Maximize"}
+          >
+            {isMaximized ? <Minimize2 size={20} /> : <Maximize2 size={20} />}
+          </button>
         </div>
         
         <div className="absolute bottom-4 right-4 z-10 bg-slate-900/80 text-white text-xs px-3 py-1 rounded backdrop-blur pointer-events-none">
