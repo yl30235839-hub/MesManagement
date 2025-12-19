@@ -1,6 +1,8 @@
+
 import React, { useState } from 'react';
 import Layout from './components/Layout';
 import LoginPage from './components/LoginPage';
+import RegisterPage from './components/RegisterPage';
 import LineManagement from './components/LineManagement';
 import EquipmentManagement from './components/EquipmentManagement';
 import Line3DView from './components/Line3DView';
@@ -15,18 +17,18 @@ const App: React.FC = () => {
 
   const handleLogin = () => {
     setIsAuthenticated(true);
+    setCurrentPage('LINES');
   };
 
   const handleLogout = () => {
     setIsAuthenticated(false);
-    setCurrentPage('LINES');
+    setCurrentPage('LOGIN');
     setSelectedLineId(null);
     setSelectedDeviceId(null);
   };
 
   const handleNavigate = (page: PageView) => {
     setCurrentPage(page);
-    // Clear selection if navigating away from specific views
     if (page !== 'EQUIPMENT' && page !== 'DEVICE_SETTINGS') {
       setSelectedLineId(null);
     }
@@ -48,6 +50,13 @@ const App: React.FC = () => {
   }
 
   const renderContent = () => {
+    if (!isAuthenticated) {
+      if (currentPage === 'REGISTER') {
+        return <RegisterPage onBack={() => setCurrentPage('LOGIN')} />;
+      }
+      return <LoginPage onLogin={handleLogin} onGoToRegister={() => setCurrentPage('REGISTER')} />;
+    }
+
     switch (currentPage) {
       case 'LINES':
         return <LineManagement onViewEquipment={handleViewEquipment} />;
@@ -62,19 +71,21 @@ const App: React.FC = () => {
     }
   };
 
-  if (!isAuthenticated) {
-    return <LoginPage onLogin={handleLogin} />;
-  }
-
   return (
-    <Layout 
-      currentPage={currentPage} 
-      onNavigate={handleNavigate} 
-      onLogout={handleLogout}
-      userName="張經理"
-    >
-      {renderContent()}
-    </Layout>
+    <div className="min-h-screen">
+      {!isAuthenticated ? (
+        renderContent()
+      ) : (
+        <Layout 
+          currentPage={currentPage} 
+          onNavigate={handleNavigate} 
+          onLogout={handleLogout}
+          userName="張經理"
+        >
+          {renderContent()}
+        </Layout>
+      )}
+    </div>
   );
 };
 

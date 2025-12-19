@@ -1,11 +1,13 @@
+
 import React, { useState } from 'react';
-import { KeyRound, User, Lock, ArrowRight } from 'lucide-react';
+import { KeyRound, User, Lock, ArrowRight, UserPlus } from 'lucide-react';
 
 interface LoginPageProps {
   onLogin: () => void;
+  onGoToRegister: () => void;
 }
 
-const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
+const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onGoToRegister }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -22,14 +24,14 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col md:flex-row max-w-4xl h-[500px]">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col md:flex-row h-[500px]">
         
         {/* Left Side - Visual */}
         <div className="hidden md:flex w-1/2 bg-blue-600 p-8 flex-col justify-between relative overflow-hidden">
           <div className="absolute top-0 left-0 w-full h-full opacity-20 bg-[url('https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?auto=format&fit=crop&q=80')] bg-cover bg-center"></div>
           <div className="relative z-10">
-            <h1 className="text-4xl font-bold text-white mb-2">Titan MES</h1>
-            <p className="text-blue-200">下一代智慧製造管理系統</p>
+            <h1 className="text-4xl font-bold text-white mb-2">Vulkan Digital Twin</h1>
+            <p className="text-blue-200">下一代數字孿生管理系統</p>
           </div>
           <div className="relative z-10 text-blue-100 text-sm">
             <p className="mb-2">✓ 實時監控</p>
@@ -57,7 +59,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                   required
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  className="pl-10 block w-full rounded-lg border border-slate-300 py-3 text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:ring-blue-500 transition-all"
+                  className="pl-10 block w-full rounded-lg border border-slate-300 py-3 text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:ring-blue-500 transition-all outline-none"
                   placeholder="admin"
                 />
               </div>
@@ -74,27 +76,37 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="pl-10 block w-full rounded-lg border border-slate-300 py-3 text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:ring-blue-500 transition-all"
+                  className="pl-10 block w-full rounded-lg border border-slate-300 py-3 text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:ring-blue-500 transition-all outline-none"
                   placeholder="••••••••"
                 />
               </div>
             </div>
 
-            <button
-              type="submit"
-              disabled={loading}
-              className={`w-full flex items-center justify-center bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all transform active:scale-95 ${loading ? 'opacity-70 cursor-not-allowed' : ''}`}
-            >
-              {loading ? '登入中...' : (
-                <>
-                  登入系統 <ArrowRight size={18} className="ml-2" />
-                </>
-              )}
-            </button>
+            <div className="space-y-3">
+              <button
+                type="submit"
+                disabled={loading}
+                className={`w-full flex items-center justify-center bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all transform active:scale-95 ${loading ? 'opacity-70 cursor-not-allowed' : ''}`}
+              >
+                {loading ? '登入中...' : (
+                  <>
+                    登入系統 <ArrowRight size={18} className="ml-2" />
+                  </>
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={onGoToRegister}
+                className="w-full flex items-center justify-center text-blue-600 hover:text-blue-700 font-medium py-2 transition-colors text-sm"
+              >
+                <UserPlus size={16} className="mr-2" /> 用戶註冊
+              </button>
+            </div>
           </form>
           
           <div className="mt-6 text-center text-xs text-slate-400">
-            © 2024 Titan Manufacturing Systems. All rights reserved.
+            © 2024 Vulkan Systems. All rights reserved.
           </div>
         </div>
       </div>

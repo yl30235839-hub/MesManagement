@@ -32,8 +32,8 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, onNavigate, onLo
         className={`${collapsed ? 'w-20' : 'w-64'} bg-slate-900 text-white transition-all duration-300 flex flex-col shadow-xl z-20 relative`}
       >
         <div className="flex items-center justify-between h-16 px-4 border-b border-slate-700 bg-slate-950">
-          {!collapsed && <span className="text-xl font-bold tracking-wider text-blue-400">Titan MES</span>}
-          {collapsed && <span className="text-xl font-bold text-blue-400 mx-auto">T</span>}
+          {!collapsed && <span className="text-xl font-bold tracking-wider text-blue-400">Vulkan Twin</span>}
+          {collapsed && <span className="text-xl font-bold text-blue-400 mx-auto">V</span>}
           <button 
             onClick={() => setCollapsed(!collapsed)}
             className="p-1 rounded hover:bg-slate-800 text-slate-400 hover:text-white"

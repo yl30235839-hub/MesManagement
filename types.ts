@@ -38,4 +38,4 @@ export interface Equipment {
   lastMaintenance: string;
 }
 
-export type PageView = 'LOGIN' | 'LINES' | 'EQUIPMENT' | '3D_VIEW' | 'DEVICE_SETTINGS';
+export type PageView = 'LOGIN' | 'REGISTER' | 'LINES' | 'EQUIPMENT' | '3D_VIEW' | 'DEVICE_SETTINGS';
