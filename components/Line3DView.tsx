@@ -11,6 +11,14 @@ import {
 } from 'lucide-react';
 import { Equipment, MachineStatus } from '../types';
 
+// Predefined time slots for manual clock-in
+const TIME_SLOTS = [
+  '00:00~01:00', '01:00~02:00', '02:00~03:00', '03:00~04:00', '04:00~05:00', '05:00~06:00',
+  '06:00~07:00', '07:00~08:00', '08:00~09:00', '09:00~10:00', '10:00~11:00', '11:00~12:00',
+  '12:00~13:00', '13:00~14:00', '14:00~15:00', '15:00~16:00', '16:00~17:00', '17:00~18:00',
+  '18:00~19:00', '19:00~20:00', '20:00~21:00', '21:00~22:00', '22:00~23:00', '23:00~24:00'
+];
+
 // --- 3D Components ---
 
 interface ItemProps {
@@ -219,9 +227,10 @@ const Line3DView: React.FC<Line3DViewProps> = ({ equipmentList, onOpenAttendance
   const [verifiedInfo, setVerifiedInfo] = useState<{name: string, employeeId: string} | null>(null);
   const [verifyStatus, setVerifyStatus] = useState('請掃描指紋以確認身份');
 
-  // Retroactive Form State
+  // Retroactive Form State (Refactored)
   const [retroForm, setRetroForm] = useState({
-    time: new Date().toISOString().slice(0, 16),
+    date: new Date().toISOString().slice(0, 10), // YYYY-MM-DD
+    timeSlot: '08:00~09:00',
     reason: ''
   });
 
@@ -278,7 +287,8 @@ const Line3DView: React.FC<Line3DViewProps> = ({ equipmentList, onOpenAttendance
     }
 
     const newLog: AttendanceLog = {
-      time: retroForm.time.split('T')[1].substring(0, 5),
+      // Concatenate selected date and slot for display
+      time: `${retroForm.date.slice(5)} ${retroForm.timeSlot.split('~')[0]}`, 
       name: verifiedInfo.name,
       employeeId: verifiedInfo.employeeId,
       isRetroactive: true
@@ -288,7 +298,11 @@ const Line3DView: React.FC<Line3DViewProps> = ({ equipmentList, onOpenAttendance
     setIsRetroModalOpen(false);
     setVerifiedInfo(null);
     setVerifyStatus('請掃描指紋以確認身份');
-    setRetroForm({ time: new Date().toISOString().slice(0, 16), reason: '' });
+    setRetroForm({ 
+      date: new Date().toISOString().slice(0, 10), 
+      timeSlot: '08:00~09:00', 
+      reason: '' 
+    });
   };
 
   const getStatusColor = (status: MachineStatus) => {
@@ -317,7 +331,6 @@ const Line3DView: React.FC<Line3DViewProps> = ({ equipmentList, onOpenAttendance
             )}
           </div>
           
-          {/* Global FACA Button - Now in the Main HUD */}
           <button 
             onClick={onOpenFACA}
             className="pointer-events-auto flex items-center px-6 py-3 bg-red-600/90 backdrop-blur-md text-white rounded-xl font-bold text-xs shadow-xl shadow-red-900/20 hover:bg-red-700 hover:scale-105 active:scale-95 transition-all group"
@@ -468,7 +481,7 @@ const Line3DView: React.FC<Line3DViewProps> = ({ equipmentList, onOpenAttendance
         )}
       </div>
 
-      {/* Retroactive Modal */}
+      {/* Retroactive Modal (Refactored for split date/time) */}
       {isRetroModalOpen && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col">
@@ -533,17 +546,36 @@ const Line3DView: React.FC<Line3DViewProps> = ({ equipmentList, onOpenAttendance
               </div>
 
               <div className="space-y-4">
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-700 flex items-center">
-                    <Clock size={12} className="mr-1.5 text-blue-500" /> 補卡日期時間
-                  </label>
-                  <input
-                    required
-                    type="datetime-local"
-                    value={retroForm.time}
-                    onChange={(e) => setRetroForm({...retroForm, time: e.target.value})}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
-                  />
+                {/* Refactored Date & Time Slot Section */}
+                <div className="grid grid-cols-1 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-700 flex items-center">
+                      <Calendar size={12} className="mr-1.5 text-blue-500" /> 補卡日期
+                    </label>
+                    <input
+                      required
+                      type="date"
+                      value={retroForm.date}
+                      onChange={(e) => setRetroForm({...retroForm, date: e.target.value})}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-700 flex items-center">
+                      <Clock size={12} className="mr-1.5 text-blue-500" /> 補卡時間段
+                    </label>
+                    <select
+                      required
+                      value={retroForm.timeSlot}
+                      onChange={(e) => setRetroForm({...retroForm, timeSlot: e.target.value})}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 bg-white appearance-none cursor-pointer"
+                    >
+                      {TIME_SLOTS.map(slot => (
+                        <option key={slot} value={slot}>{slot}</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
 
                 <div className="space-y-1">
