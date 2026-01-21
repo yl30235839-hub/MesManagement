@@ -36,6 +36,11 @@ export interface Equipment {
   temperature: number;
   vibration: number;
   lastMaintenance: string;
+  // Specialized fields for Clock-in Device
+  factoryArea?: string;
+  floor?: string;
+  sn?: string;
+  fingerprintId?: string;
 }
 
-export type PageView = 'LOGIN' | 'REGISTER' | 'LINES' | 'EQUIPMENT' | '3D_VIEW' | 'DEVICE_SETTINGS';
+export type PageView = 'LOGIN' | 'REGISTER' | 'LINES' | 'EQUIPMENT' | '3D_VIEW' | 'DEVICE_SETTINGS' | 'ATTENDANCE_MAINTENANCE' | 'FACA_MANAGEMENT';

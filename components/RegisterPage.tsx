@@ -1,9 +1,10 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { 
   User, IdCard, Building2, Briefcase, GraduationCap, 
-  MapPin, Building, Lock, ArrowLeft, CheckCircle, 
-  Fingerprint, Scan, ShieldCheck, Info, Eye, EyeOff
+  Lock, ArrowLeft, CheckCircle, 
+  Fingerprint, Scan, ShieldCheck, Info, Eye, EyeOff,
+  UserCheck, Zap, Monitor, Settings, CheckSquare, Square
 } from 'lucide-react';
 
 interface RegisterPageProps {
@@ -20,9 +21,13 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onBack }) => {
     position: '機構',
     techLevel: '1級(Level C)',
     permission: '操作員',
-    factoryArea: 'GL',
-    floor: '',
-    password: ''
+    password: '',
+    extraPermissions: {
+      keyPersonnel: false,
+      mobilePersonnel: false,
+      hostSoftware: false,
+      equipmentOp: false
+    }
   });
 
   // Fingerprint Registration State
@@ -30,7 +35,6 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onBack }) => {
   const [isFingerRegistered, setIsFingerRegistered] = useState(false);
   const [fingerprintImage, setFingerprintImage] = useState<string | null>(null);
   const [fingerprintStatus, setFingerprintStatus] = useState('等待登記...');
-  const [registerStep, setRegisterStep] = useState(0);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,26 +47,30 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onBack }) => {
     }, 1500);
   };
 
+  const toggleExtraPermission = (key: keyof typeof formData.extraPermissions) => {
+    setFormData({
+      ...formData,
+      extraPermissions: {
+        ...formData.extraPermissions,
+        [key]: !formData.extraPermissions[key]
+      }
+    });
+  };
+
   const startFingerprintRegistration = () => {
     setIsRegisteringFinger(true);
     setIsFingerRegistered(false);
     setFingerprintImage(null);
-    setRegisterStep(1);
     setFingerprintStatus('開始采集指紋，請按下第1次手指');
 
-    // Simulate multi-step collection
     setTimeout(() => {
-      setRegisterStep(2);
       setFingerprintStatus('請按下第2次手指...');
       setTimeout(() => {
-        setRegisterStep(3);
         setFingerprintStatus('請按下第3次手指...');
         setTimeout(() => {
           setIsRegisteringFinger(false);
           setIsFingerRegistered(true);
-          setRegisterStep(0);
           setFingerprintStatus('指紋登記成功！');
-          // Mock fingerprint image
           setFingerprintImage('https://images.unsplash.com/photo-1518133910546-b6c2fb7d79e3?auto=format&fit=crop&q=80&w=200&h=200');
         }, 1000);
       }, 1000);
@@ -76,6 +84,13 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onBack }) => {
       setFingerprintStatus('指紋驗證通過！匹配度：99.8%');
     }, 800);
   };
+
+  const extraPermsList = [
+    { id: 'keyPersonnel', label: '關鍵人力', icon: UserCheck },
+    { id: 'mobilePersonnel', label: '機動人力', icon: Zap },
+    { id: 'hostSoftware', label: '上位機軟件', icon: Monitor },
+    { id: 'equipmentOp', label: '設備操作權限', icon: Settings },
+  ];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4">
@@ -161,7 +176,6 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onBack }) => {
                 <Fingerprint size={16} className="mr-2 text-blue-600" /> 生物信息登記
               </h3>
               
-              {/* Fingerprint Image Box */}
               <div className="w-32 h-32 bg-white rounded-xl border-2 border-dashed border-slate-300 flex items-center justify-center relative overflow-hidden group mb-4">
                 {fingerprintImage ? (
                   <img src={fingerprintImage} alt="Fingerprint" className="w-full h-full object-cover opacity-80" />
@@ -175,7 +189,6 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onBack }) => {
                 )}
               </div>
 
-              {/* Backend Status Display */}
               <div className="w-full bg-slate-900 text-green-400 p-3 rounded-lg font-mono text-xs h-16 flex items-center mb-4 border border-slate-800 shadow-inner">
                 <div className="flex items-start">
                   <span className="mr-2">$></span>
@@ -183,7 +196,6 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onBack }) => {
                 </div>
               </div>
 
-              {/* Fingerprint Buttons */}
               <div className="flex gap-2 w-full">
                 <button
                   type="button"
@@ -225,37 +237,6 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onBack }) => {
 
             <div className="space-y-1">
               <label className="text-sm font-semibold text-slate-700 flex items-center">
-                <MapPin size={14} className="mr-1.5 text-blue-500" /> 廠區
-              </label>
-              <select
-                value={formData.factoryArea}
-                onChange={(e) => setFormData({...formData, factoryArea: e.target.value})}
-                className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white transition-all"
-              >
-                <option value="GL">GL</option>
-                <option value="GZ">GZ</option>
-                <option value="LK">LK</option>
-                <option value="ZZC">ZZC</option>
-                <option value="ZZK">ZZK</option>
-              </select>
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-sm font-semibold text-slate-700 flex items-center">
-                <Building size={14} className="mr-1.5 text-blue-500" /> 設備樓層
-              </label>
-              <input
-                required
-                type="text"
-                value={formData.floor}
-                onChange={(e) => setFormData({...formData, floor: e.target.value})}
-                className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-                placeholder="e.g. C04-2F"
-              />
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-sm font-semibold text-slate-700 flex items-center">
                 <Lock size={14} className="mr-1.5 text-blue-500" /> 密碼
               </label>
               <div className="relative">
@@ -271,7 +252,6 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onBack }) => {
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-blue-500 transition-colors"
-                  title={showPassword ? "隱藏密碼" : "顯示密碼"}
                 >
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
@@ -279,7 +259,7 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onBack }) => {
             </div>
 
             {/* Permission (Full Width) */}
-            <div className="md:col-span-2 space-y-3 pt-2">
+            <div className="md:col-span-2 space-y-3 pt-4 border-t border-slate-100">
               <label className="text-sm font-semibold text-slate-700">操作權限</label>
               <div className="flex flex-wrap gap-4">
                 {['操作員', '工程師', '管理員'].map((perm) => (
@@ -301,6 +281,36 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onBack }) => {
                     </span>
                   </label>
                 ))}
+              </div>
+            </div>
+
+            {/* Extra Permissions (Multi-select) */}
+            <div className="md:col-span-2 space-y-3 pt-2">
+              <label className="text-sm font-semibold text-slate-700">額外權限 (多選)</label>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {extraPermsList.map((perm) => {
+                  const isActive = formData.extraPermissions[perm.id as keyof typeof formData.extraPermissions];
+                  return (
+                    <button
+                      key={perm.id}
+                      type="button"
+                      onClick={() => toggleExtraPermission(perm.id as keyof typeof formData.extraPermissions)}
+                      className={`flex items-center p-3 rounded-xl border-2 transition-all text-left ${
+                        isActive 
+                          ? 'border-blue-500 bg-blue-50 text-blue-700 shadow-sm' 
+                          : 'border-slate-100 bg-slate-50 text-slate-500 hover:border-slate-200'
+                      }`}
+                    >
+                      <div className={`p-1.5 rounded-lg mr-2 ${isActive ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-400'}`}>
+                        <perm.icon size={14} />
+                      </div>
+                      <span className="text-xs font-bold leading-tight">{perm.label}</span>
+                      <div className="ml-auto">
+                        {isActive ? <CheckSquare size={16} /> : <Square size={16} className="opacity-20" />}
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
