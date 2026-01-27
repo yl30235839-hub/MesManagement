@@ -21,16 +21,6 @@ export const MOCK_EQUIPMENT: Equipment[] = [
     lastMaintenance: '2024-03-01' 
   },
   { 
-    id: 'E2', 
-    lineId: 'L1', 
-    name: '物流小車 AGV-01', 
-    type: 'AGV小車', 
-    status: MachineStatus.Running, 
-    temperature: 32, 
-    vibration: 0.8, 
-    lastMaintenance: '2024-03-10' 
-  },
-  { 
     id: 'E3', 
     lineId: 'L1', 
     name: '車間指紋打卡機', 
