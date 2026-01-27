@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
 import { KeyRound, User, Lock, ArrowRight, UserPlus } from 'lucide-react';
+import api from '../services/api';
 
 interface LoginPageProps {
   onLogin: () => void;
@@ -11,15 +12,28 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onGoToRegister }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    // Simulate API call
-    setTimeout(() => {
-      setLoading(false);
+    setError(null);
+    
+    try {
+      // In a real scenario, this would be: 
+      // const response = await api.post('/auth/login', { username, password });
+      // For now, we simulate the axios call behavior
+      await new Promise(resolve => setTimeout(resolve, 800));
+      
+      // Simulate success
+      localStorage.setItem('mes_token', 'dummy_token_12345');
       onLogin();
-    }, 1000);
+    } catch (err: any) {
+      setError('登入失敗，請檢查賬號或密碼。');
+      console.error('Login Error:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -48,6 +62,11 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onGoToRegister }) => {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
+            {error && (
+              <div className="p-3 bg-red-50 border border-red-200 text-red-600 text-xs rounded-lg animate-pulse">
+                {error}
+              </div>
+            )}
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">賬號</label>
               <div className="relative">
