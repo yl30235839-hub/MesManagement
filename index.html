@@ -1,45 +1,47 @@
-
 <!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Vulkan Digital Twin System</title>
-    <!-- Add inline favicon to solve 404 error -->
+    <!-- 內置 Favicon 避免 404 -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏭</text></svg>">
+    
+    <!-- 生產環境編譯後的 CSS (Tailwind v4) -->
+    <link href="./dist/output.css" rel="stylesheet">
+    
+    <!-- 開發環境備用 CDN (若 dist/output.css 不存在時使用) -->
     <script src="https://cdn.tailwindcss.com"></script>
+    
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
       body {
         font-family: 'Inter', sans-serif;
         background-color: #f3f4f6;
       }
-      /* Hide scrollbar for clean UI in sidebar */
-      .no-scrollbar::-webkit-scrollbar {
-        display: none;
-      }
-      .no-scrollbar {
-        -ms-overflow-style: none;
-        scrollbar-width: none;
-      }
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
-  <script type="importmap">
-{
-  "imports": {
-    "react/": "https://aistudiocdn.com/react@^19.2.1/",
-    "react": "https://aistudiocdn.com/react@^19.2.1",
-    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.1/",
-    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.556.0",
-    "@react-three/fiber": "https://aistudiocdn.com/@react-three/fiber@^9.4.2",
-    "recharts": "https://aistudiocdn.com/recharts@^3.5.1",
-    "three": "https://aistudiocdn.com/three@^0.181.2",
-    "@react-three/drei": "https://aistudiocdn.com/@react-three/drei@^10.7.7",
-    "axios": "https://aistudiocdn.com/axios@^1.7.9"
-  }
-}
-</script>
-</head>
+    
+    <script type="importmap">
+    {
+      "imports": {
+        "react/": "https://aistudiocdn.com/react@^19.2.1/",
+        "react": "https://aistudiocdn.com/react@^19.2.1",
+        "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.1/",
+        "lucide-react": "https://aistudiocdn.com/lucide-react@^0.556.0",
+        "@react-three/fiber": "https://aistudiocdn.com/@react-three/fiber@^9.4.2",
+        "recharts": "https://aistudiocdn.com/recharts@^3.5.1",
+        "three": "https://aistudiocdn.com/three@^0.181.2",
+        "@react-three/drei": "https://aistudiocdn.com/@react-three/drei@^10.7.7",
+        "axios": "https://aistudiocdn.com/axios@^1.7.9"
+      }
+    }
+    </script>
+  </head>
   <body>
     <div id="root"></div>
+    <!-- 關鍵修正：顯式載入 React 入口文件 -->
+    <script type="module" src="./index.tsx"></script>
   </body>
 </html>

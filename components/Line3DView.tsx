@@ -12,8 +12,9 @@ import {
 } from 'lucide-react';
 import { Equipment, MachineStatus } from '../types';
 
-// Fix: properly augment the global JSX namespace to support both React Three Fiber elements
-// and standard HTML elements, preventing shadowing issues that break JSX globally.
+// Properly augment the global JSX namespace to support React Three Fiber elements.
+// This fix addresses the "Property does not exist on type 'JSX.IntrinsicElements'" errors
+// by ensuring that the JSX namespace correctly incorporates types from @react-three/fiber.
 declare global {
   namespace JSX {
     interface IntrinsicElements extends ThreeElements {
