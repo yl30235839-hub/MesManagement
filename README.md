@@ -2,87 +2,89 @@
 
 本專案是一套專為製造業設計的數字孿生（Digital Twin）與 MES 管理系統，包含 3D 產線監控、人員考勤、設備維護及 FACA 故障分析功能。
 
-## 🚀 生產環境部署指南 (Tailwind CSS)
+## 🚀 生產環境部署指南 (Tailwind CSS v4 新架構)
 
-目前開發版本為了快速原型設計使用了 Tailwind CDN。在部署至生產環境時，建議切換至標準編譯流程以優化效能。
+本專案在生產環境中建議使用 **Tailwind CSS v4** 的 CSS-first 編譯流程。v4 版本不再需要複雜的 `tailwind.config.js`，配置直接在 CSS 中完成，性能更強。
 
-### 1. 初始化專案環境 (若尚未執行)
-在專案根目錄執行以下指令，確保環境中存有 `package.json`：
+### 1. 環境準備
+確保您的開發環境已安裝最新版本：
+- **Node.js**: v24.x (或更高版本)
+- **npm**: v11.x (或更高版本)
 
+檢查指令：
 ```bash
+node -v # 應顯示 v24.x
+npm -v  # 應顯示 v11.x
+```
+
+### 2. 初始化項目與安裝 v4 依賴
+在專案根目錄執行（npm 11 支持更快的並行安裝）：
+```bash
+# 初始化 package.json (如果尚未初始化)
 npm init -y
+
+# 安裝 Tailwind v4 及 PostCSS 插件
+npm install tailwindcss @tailwindcss/postcss postcss
 ```
 
-### 2. 安裝 Tailwind CSS 及其依賴
-執行安裝指令。若遇到權限問題，請確認您具有寫入權限。
+### 3. 建立 CSS 進入點 (CSS-First Configuration)
+在根目錄建立 `style.css`。在 Tailwind v4 中，我們直接在 CSS 中進行配置，不再需要單獨的配置文件：
 
-```bash
-npm install -D tailwindcss postcss autoprefixer
-```
+```css
+/* 1. 導入 Tailwind v4 */
+@import "tailwindcss";
 
-### 3. 初始化配置文件
-如果執行 `npx tailwindcss init -p` 報錯 `could not determine executable`，請嘗試以下任一指令：
+/* 2. 定義主題配置 (代替舊版的 tailwind.config.js) */
+@theme {
+  --font-sans: "Inter", ui-serif, system-ui, sans-serif;
+  --color-brand-blue: #3b82f6;
+}
 
-**方案 A (推薦)：** 使用最新版本標籤執行
-```bash
-npx tailwindcss@latest init -p
-```
-
-**方案 B：** 直接調用本地二進制路徑 (Windows)
-```bash
-.\node_modules\.bin\tailwindcss init -p
-```
-
-**方案 C：** 直接調用本地二進制路徑 (macOS/Linux)
-```bash
-./node_modules/.bin/tailwindcss init -p
-```
-
-### 4. 配置 `tailwind.config.js`
-修改產生的 `tailwind.config.js` 文件：
-
-```javascript
-/** @type {import('tailwindcss').Config} */
-module.exports = {
-  content: [
-    "./index.html",
-    "./index.tsx",
-    "./components/**/*.{js,ts,jsx,tsx}",
-  ],
-  theme: {
-    extend: {
-      fontFamily: {
-        sans: ['Inter', 'sans-serif'],
-      },
-    },
-  },
-  plugins: [],
+/* 3. 您的自定義組件樣式 */
+@layer components {
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
 }
 ```
 
-### 5. 建立 CSS 進入點
-建立文件 `style.css`：
-
-```css
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
-.no-scrollbar::-webkit-scrollbar { display: none; }
-.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-```
-
-### 6. 執行編譯與生產環境構建
-在 `index.html` 中引入 `./dist/output.css` 後，執行：
+### 4. 執行生產環境編譯 (Lightning-Fast CLI)
+使用 Tailwind v4 的內建 CLI 生成優化後的產物。v4 會自動檢測項目中的 `html` 和 `tsx` 文件，無需手動配置 `content` 路徑：
 
 ```bash
-# 生產環境壓縮編譯
-NODE_ENV=production npx tailwindcss -i ./style.css -o ./dist/output.css --minify
+# 使用 npx 執行編譯，-i 為輸入文件，-o 為輸出路徑
+# --minify 會自動進行代碼壓縮與移除未使用的 CSS
+npx tailwindcss -i ./style.css -o ./dist/output.css --minify
+```
+
+### 5. 更新 index.html 引用
+將開發用的 CDN 腳本替換為編譯後的靜態文件：
+
+```html
+<!-- 生產環境：移除 CDN 腳本 -->
+<!-- <script src="https://cdn.tailwindcss.com"></script> -->
+
+<!-- 生產環境：引用 v4 編譯出的產物 -->
+<link href="./dist/output.css" rel="stylesheet">
 ```
 
 ## 🛠️ 後端連線配置
-系統預設連線：`https://localhost:7201/api`。
-若遇到 `Network Error`，請在瀏覽器打開該網址並點擊「進階 -> 繼續前往（不安全）」以信任 SSL 憑證。
+系統預設連線至後端 API 服務：`https://localhost:7201/api`。
+
+### SSL 憑證安全性提示
+若後端使用自簽署憑證，瀏覽器可能會攔截請求並回報 `Network Error`：
+1. 確保後端服務已啟動。
+2. 在瀏覽器打開 `https://localhost:7201/api/RegistPage/Verify`。
+3. 點擊「進階」並選擇「繼續前往（不安全）」，以建立瀏覽器對該端口的信任。
+
+## 📂 專案核心功能
+- **3D 數字孿生**: 實時監控產線運作狀態與設備參數。
+- **指紋考勤系統**: 集成實時打卡與手動補卡邏輯。
+- **FACA 故障分析**: 結構化的異常錄入與維修追蹤。
 
 ---
 © 2024 Vulkan Systems. All rights reserved.

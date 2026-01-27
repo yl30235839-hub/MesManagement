@@ -1,3 +1,4 @@
+
 import React, { useRef, useState, useEffect, useMemo } from 'react';
 import { Canvas, useFrame, ThreeElements } from '@react-three/fiber';
 import { OrbitControls, Text, Grid, PerspectiveCamera, Environment, ContactShadows } from '@react-three/drei';
@@ -11,13 +12,12 @@ import {
 } from 'lucide-react';
 import { Equipment, MachineStatus } from '../types';
 
-// Fix: Augment the JSX namespace properly within the React namespace to ensure 
-// merging with standard HTML elements while adding React Three Fiber elements.
-// This prevents the global JSX namespace from being shadowed and losing standard elements like div.
+// Fix: properly augment the global JSX namespace to support both React Three Fiber elements
+// and standard HTML elements, preventing shadowing issues that break JSX globally.
 declare global {
-  namespace React {
-    namespace JSX {
-      interface IntrinsicElements extends ThreeElements {}
+  namespace JSX {
+    interface IntrinsicElements extends ThreeElements {
+      [elemName: string]: any;
     }
   }
 }
@@ -26,7 +26,7 @@ declare global {
 const TIME_SLOTS = [
   '00:00~01:00', '01:00~02:00', '02:00~03:00', '03:00~04:00', '04:00~05:00', '05:00~06:00',
   '06:00~07:00', '07:00~08:00', '08:00~09:00', '09:00~10:00', '10:00~11:00', '11:00~12:00',
-  '12:00~13:00', '13:00~14:00', '14:00~15:00', '15:00~16:00', '16:00~17:00', '17:00~18:00',
+  '12:00~13:00', '14:00~15:00', '15:00~16:00', '16:00~17:00', '17:00~18:00',
   '18:00~19:00', '19:00~20:00', '20:00~21:00', '21:00~22:00', '22:00~23:00', '23:00~24:00'
 ];
 
@@ -51,7 +51,7 @@ const MachineModel: React.FC<ItemProps> = ({ data, isSelected, onClick, position
   });
 
   return (
-    <group position={position} onClick={(e) => { e.stopPropagation(); onClick(data); }}>
+    <group position={position} onClick={(e: any) => { e.stopPropagation(); onClick(data); }}>
       <mesh 
         ref={meshRef} 
         position={[0, 1, 0]} 
@@ -89,7 +89,7 @@ const AGVModel: React.FC<ItemProps> = ({ data, isSelected, onClick, position }) 
   });
 
   return (
-    <group ref={groupRef} position={position} onClick={(e) => { e.stopPropagation(); onClick(data); }}>
+    <group ref={groupRef} position={position} onClick={(e: any) => { e.stopPropagation(); onClick(data); }}>
       <mesh position={[0, 0.3, 0]} onPointerOver={() => setHovered(true)} onPointerOut={() => setHovered(false)}>
         <boxGeometry args={[2.5, 0.6, 1.8]} />
         <meshStandardMaterial color={isSelected ? '#3b82f6' : hovered ? '#fbbf24' : '#f59e0b'} />
@@ -123,7 +123,7 @@ const FingerprintModel: React.FC<ItemProps> = ({ data, isSelected, onClick, posi
   });
   
   return (
-    <group position={position} onClick={(e) => { e.stopPropagation(); onClick(data); }}>
+    <group position={position} onClick={(e: any) => { e.stopPropagation(); onClick(data); }}>
       <mesh position={[0, 0.7, 0]} onPointerOver={() => { setHovered(true); document.body.style.cursor = 'pointer'; }} onPointerOut={() => { setHovered(false); document.body.style.cursor = 'auto'; }}>
         <boxGeometry args={[0.6, 1.4, 0.6]} />
         <meshStandardMaterial color="#1e293b" metalness={0.9} roughness={0.1} />
