@@ -1,4 +1,3 @@
-
 import React, { useRef, useState, useEffect, useMemo } from 'react';
 import { Canvas, useFrame, ThreeElements } from '@react-three/fiber';
 import { OrbitControls, Text, Grid, PerspectiveCamera, Environment, ContactShadows } from '@react-three/drei';
@@ -13,22 +12,11 @@ import {
 import { Equipment, MachineStatus } from '../types';
 
 // Fix: Augment the JSX namespace properly to include React Three Fiber elements.
-// Using specific properties instead of 'extends ThreeElements' prevents shadowing standard HTML elements in JSX.IntrinsicElements.
+// Using 'extends ThreeElements' ensures we merge with existing elements (like div, span, p, etc)
+// instead of overriding the entire IntrinsicElements interface with only custom elements.
 declare global {
   namespace JSX {
-    interface IntrinsicElements {
-      group: any;
-      mesh: any;
-      boxGeometry: any;
-      meshStandardMaterial: any;
-      ringGeometry: any;
-      meshBasicMaterial: any;
-      cylinderGeometry: any;
-      pointLight: any;
-      planeGeometry: any;
-      ambientLight: any;
-      directionalLight: any;
-    }
+    interface IntrinsicElements extends ThreeElements {}
   }
 }
 
