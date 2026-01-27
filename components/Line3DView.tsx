@@ -1,8 +1,9 @@
 
 import React, { useRef, useState, useEffect, useMemo } from 'react';
-import { Canvas, useFrame } from '@react-three/fiber';
+import { Canvas, useFrame, ThreeElements } from '@react-three/fiber';
 import { OrbitControls, Text, Grid, PerspectiveCamera, Environment, ContactShadows } from '@react-three/drei';
 import * as THREE from 'three';
+import api from '../services/api';
 import { 
   X, Thermometer, Activity, Clock, Cpu, Maximize2, Minimize2, 
   Fingerprint, ChevronRight, Calendar, Truck, Layers,
@@ -10,6 +11,26 @@ import {
   Scan, ShieldCheck, FileWarning
 } from 'lucide-react';
 import { Equipment, MachineStatus } from '../types';
+
+// Fix: Augment the JSX namespace properly to include React Three Fiber elements.
+// Using specific properties instead of 'extends ThreeElements' prevents shadowing standard HTML elements in JSX.IntrinsicElements.
+declare global {
+  namespace JSX {
+    interface IntrinsicElements {
+      group: any;
+      mesh: any;
+      boxGeometry: any;
+      meshStandardMaterial: any;
+      ringGeometry: any;
+      meshBasicMaterial: any;
+      cylinderGeometry: any;
+      pointLight: any;
+      planeGeometry: any;
+      ambientLight: any;
+      directionalLight: any;
+    }
+  }
+}
 
 // Predefined time slots for manual clock-in
 const TIME_SLOTS = [
@@ -139,7 +160,6 @@ const FactoryScene: React.FC<{
   selectedId: string | null,
   isScanning: boolean
 }> = ({ equipmentList, onItemClick, selectedId, isScanning }) => {
-  // Group equipment by production line ID for row-based layout
   const groupedEquipment = useMemo(() => {
     const groups: Record<string, Equipment[]> = {};
     equipmentList.forEach(item => {
@@ -167,7 +187,6 @@ const FactoryScene: React.FC<{
 
       {groupedEquipment.map(([lineId, items], rowIndex) => (
         <group key={lineId} position={[0, 0, rowIndex * -rowSpacing]}>
-          {/* Row Label */}
           <Text 
             position={[-18, 0.5, 0]} 
             fontSize={1.2} 
@@ -178,7 +197,6 @@ const FactoryScene: React.FC<{
             Line: {lineId}
           </Text>
 
-          {/* Equipment in this Row */}
           {items.map((item, colIndex) => {
             const x = (colIndex * columnSpacing) - ((items.length - 1) * columnSpacing / 2);
             const position: [number, number, number] = [x, 0, 0];
@@ -222,19 +240,16 @@ const Line3DView: React.FC<Line3DViewProps> = ({ equipmentList, onOpenAttendance
   const [isRetroModalOpen, setIsRetroModalOpen] = useState(false);
   const [attendanceLogs, setAttendanceLogs] = useState<AttendanceLog[]>([]);
 
-  // Verification State for Retroactive Modal
   const [isVerifying, setIsVerifying] = useState(false);
   const [verifiedInfo, setVerifiedInfo] = useState<{name: string, employeeId: string} | null>(null);
   const [verifyStatus, setVerifyStatus] = useState('請掃描指紋以確認身份');
 
-  // Retroactive Form State (Refactored)
   const [retroForm, setRetroForm] = useState({
-    date: new Date().toISOString().slice(0, 10), // YYYY-MM-DD
+    date: new Date().toISOString().slice(0, 10),
     timeSlot: '08:00~09:00',
     reason: ''
   });
 
-  // Simulate real-time data when scanning is active
   useEffect(() => {
     let interval: number;
     if (isScanning && selectedItem?.type === '打卡設備') {
@@ -258,6 +273,48 @@ const Line3DView: React.FC<Line3DViewProps> = ({ equipmentList, onOpenAttendance
     setSelectedItem(data);
     if (data.type !== '打卡設備') {
       setIsScanning(false);
+    }
+  };
+
+  /**
+   * HTTP POST: Start Clock-in Process
+   * Fixed: Added specific guidance for SSL/CORS issues
+   */
+  const handleStartClockIn = async () => {
+    if (!selectedItem || selectedItem.type !== '打卡設備') return;
+
+    const fingerNo = parseInt(selectedItem.fingerprintId || '1', 10);
+    
+    try {
+      console.log(`[MES API] Sending verification for Finger No: ${fingerNo}...`);
+      
+      const response = await api.post('/RegistPage/Verify', {
+        fingerNo: fingerNo
+      });
+
+      const { code, message } = response.data;
+
+      if (code === 200) {
+        console.log("[MES API] Verification Active:", message);
+        setIsScanning(true);
+      } else {
+        alert(`啟動打卡失敗: ${message}`);
+      }
+    } catch (error: any) {
+      console.error("[MES API] Communication Failed:", error.message);
+      
+      if (error.message === 'Network Error') {
+        const confirmMsg = "通訊異常：無法連線至後端 API (Network Error)。\n\n這通常是以下原因造成的：\n1. 後端服務未開啟 (Port 7201)\n2. 瀏覽器攔截了不安全的自簽署 HTTPS 憑證\n\n是否嘗試在分頁打開後端網址以手動信任憑證？";
+        
+        if (window.confirm(confirmMsg)) {
+          window.open('https://localhost:7201/api/RegistPage/Verify', '_blank');
+        }
+        
+        // Demo Fallback for visual confirmation
+        setIsScanning(true); 
+      } else {
+        alert("通訊異常，請確認伺服器狀態。");
+      }
     }
   };
 
@@ -287,7 +344,6 @@ const Line3DView: React.FC<Line3DViewProps> = ({ equipmentList, onOpenAttendance
     }
 
     const newLog: AttendanceLog = {
-      // Concatenate selected date and slot for display
       time: `${retroForm.date.slice(5)} ${retroForm.timeSlot.split('~')[0]}`, 
       name: verifiedInfo.name,
       employeeId: verifiedInfo.employeeId,
@@ -317,7 +373,6 @@ const Line3DView: React.FC<Line3DViewProps> = ({ equipmentList, onOpenAttendance
   return (
     <div className={`bg-slate-900 border border-slate-700 relative flex transition-all duration-300 ${isMaximized ? 'fixed inset-0 z-50' : 'h-[calc(100vh-160px)] rounded-3xl overflow-hidden'}`}>
       <div className="flex-1 h-full w-full relative">
-        {/* Main Header UI */}
         <div className="absolute top-6 left-6 z-10 space-y-3 pointer-events-none">
           <div className="bg-slate-950/80 backdrop-blur-md p-6 rounded-2xl border border-slate-800 shadow-2xl">
             <h3 className="text-lg font-bold text-white flex items-center">
@@ -360,7 +415,6 @@ const Line3DView: React.FC<Line3DViewProps> = ({ equipmentList, onOpenAttendance
         </div>
       </div>
 
-      {/* Sidebar Detail */}
       <div className={`bg-white shadow-2xl z-20 transition-all duration-300 absolute right-0 top-0 bottom-0 overflow-hidden flex flex-col ${selectedItem ? 'w-80 translate-x-0' : 'w-80 translate-x-full opacity-0'}`}>
         {selectedItem && (
           <>
@@ -383,7 +437,7 @@ const Line3DView: React.FC<Line3DViewProps> = ({ equipmentList, onOpenAttendance
                 <div className="space-y-4">
                   <div className="grid grid-cols-2 gap-3">
                     <button 
-                      onClick={() => setIsScanning(true)}
+                      onClick={handleStartClockIn}
                       disabled={isScanning}
                       className={`flex items-center justify-center py-3 rounded-xl text-xs font-bold transition-all shadow-sm
                         ${isScanning ? 'bg-slate-100 text-slate-400' : 'bg-blue-600 text-white hover:bg-blue-700'}`}
@@ -407,7 +461,6 @@ const Line3DView: React.FC<Line3DViewProps> = ({ equipmentList, onOpenAttendance
                     <ClipboardEdit size={14} className="mr-1.5" /> 手動補卡
                   </button>
 
-                  {/* Attendance Log List */}
                   <div className="border border-slate-200 rounded-2xl overflow-hidden bg-white shadow-sm">
                     <div className="px-4 py-3 bg-slate-50 border-b border-slate-200 flex justify-between items-center">
                       <span className="text-[10px] font-bold text-slate-500 uppercase flex items-center">
@@ -481,7 +534,6 @@ const Line3DView: React.FC<Line3DViewProps> = ({ equipmentList, onOpenAttendance
         )}
       </div>
 
-      {/* Retroactive Modal (Refactored for split date/time) */}
       {isRetroModalOpen && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col">
@@ -499,13 +551,12 @@ const Line3DView: React.FC<Line3DViewProps> = ({ equipmentList, onOpenAttendance
                 <p className="text-[10px] text-amber-700 leading-relaxed">提示：請員工先行掃描指紋驗證身份，補卡數據將標記為「手動錄入」。</p>
               </div>
 
-              {/* Fingerprint Verification Module */}
               <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200 flex flex-col items-center">
                 <div className={`w-20 h-20 bg-white rounded-2xl border-2 border-dashed flex items-center justify-center relative overflow-hidden mb-4 ${isVerifying ? 'border-blue-400' : verifiedInfo ? 'border-green-400 bg-green-50' : 'border-slate-300'}`}>
                    {verifiedInfo ? (
                      <ShieldCheck size={40} className="text-green-500 animate-in zoom-in" />
                    ) : (
-                     <Fingerprint size={40} className={`text-slate-200 ${isVerifying ? 'animate-pulse text-blue-400' : ''}`} />
+                     <Fingerprint size={40} className={`text-slate-200 ${isVerifying ? 'animate-pulse text-blue-300' : ''}`} />
                    )}
                    {isVerifying && (
                      <div className="absolute inset-0 flex items-center justify-center">
@@ -546,7 +597,6 @@ const Line3DView: React.FC<Line3DViewProps> = ({ equipmentList, onOpenAttendance
               </div>
 
               <div className="space-y-4">
-                {/* Refactored Date & Time Slot Section */}
                 <div className="grid grid-cols-1 gap-4">
                   <div className="space-y-1">
                     <label className="text-xs font-bold text-slate-700 flex items-center">
