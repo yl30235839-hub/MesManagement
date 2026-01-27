@@ -11,12 +11,14 @@ import {
 } from 'lucide-react';
 import { Equipment, MachineStatus } from '../types';
 
-// Fix: Augment the JSX namespace properly to include React Three Fiber elements.
-// Using 'extends ThreeElements' ensures we merge with existing elements (like div, span, p, etc)
-// instead of overriding the entire IntrinsicElements interface with only custom elements.
+// Fix: Augment the JSX namespace properly within the React namespace to ensure 
+// merging with standard HTML elements while adding React Three Fiber elements.
+// This prevents the global JSX namespace from being shadowed and losing standard elements like div.
 declare global {
-  namespace JSX {
-    interface IntrinsicElements extends ThreeElements {}
+  namespace React {
+    namespace JSX {
+      interface IntrinsicElements extends ThreeElements {}
+    }
   }
 }
 
