@@ -12,18 +12,12 @@ import {
 } from 'lucide-react';
 import { Equipment, MachineStatus } from '../types';
 
-// Fix: Properly augment the JSX namespace for React Three Fiber.
-// In React 18+, JSX types are often handled within the React namespace.
-// This augmentation ensures that three.js elements like <group />, <mesh />, etc.
-// are recognized by the TypeScript compiler.
+// Properly augment the JSX namespace for React Three Fiber.
+// This ensures that three.js elements like <group />, <mesh />, etc.
+// are recognized by the TypeScript compiler within the global JSX namespace.
 declare global {
   namespace JSX {
     interface IntrinsicElements extends ThreeElements {}
-  }
-  namespace React {
-    namespace JSX {
-      interface IntrinsicElements extends ThreeElements {}
-    }
   }
 }
 
