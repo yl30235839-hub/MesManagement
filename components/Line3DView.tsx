@@ -12,13 +12,17 @@ import {
 } from 'lucide-react';
 import { Equipment, MachineStatus } from '../types';
 
-// Properly augment the global JSX namespace to support React Three Fiber elements.
-// This fix addresses the "Property does not exist on type 'JSX.IntrinsicElements'" errors
-// by ensuring that the JSX namespace correctly incorporates types from @react-three/fiber.
+// Fix: Properly augment the JSX namespace for React Three Fiber.
+// In React 18+, JSX types are often handled within the React namespace.
+// This augmentation ensures that three.js elements like <group />, <mesh />, etc.
+// are recognized by the TypeScript compiler.
 declare global {
   namespace JSX {
-    interface IntrinsicElements extends ThreeElements {
-      [elemName: string]: any;
+    interface IntrinsicElements extends ThreeElements {}
+  }
+  namespace React {
+    namespace JSX {
+      interface IntrinsicElements extends ThreeElements {}
     }
   }
 }

@@ -53,6 +53,28 @@ npx @tailwindcss/cli -i ./style.css -o ./dist/output.css --watch
     </body>
     ```
 
+## 📦 靜態資源與離線部署 (Static Assets & Offline Deployment)
+
+若需在無網路環境（內網）部署，請下載以下資源並存放於專案根目錄的 `assets/` 資料夾中，並修改代碼中的引用路徑。
+
+### 1. 外部圖片資源
+請下載以下圖片並更名為對應名稱存放於 `assets/images/`：
+- **登入頁背景**: [下載連結](https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?q=80) (更名為 `login-bg.jpg`)
+- **指紋示例圖**: [下載連結](https://images.unsplash.com/photo-1518133910546-b6c2fb7d79e3?q=80) (更名為 `fingerprint-sample.jpg`)
+
+### 2. 字體資源
+- **Inter Font**: [Google Fonts 下載](https://fonts.google.com/specimen/Inter)
+  - 下載後解壓縮至 `assets/fonts/`，並在 `style.css` 中使用 `@font-face` 引用。
+
+### 3. 3D 場景環境貼圖 (HDR)
+- **City Preset**: [下載連結](https://github.com/pmndrs/drei-assets/raw/master/hdri/city.hdr)
+  - 存放至 `assets/textures/city.hdr`。
+  - 修改 `Line3DView.tsx`：`<Environment files="./assets/textures/city.hdr" />`。
+
+### 4. 核心程式庫 (ES Modules)
+若需完全離線，請將 `index.html` 中 `importmap` 的網址替換為本地路徑：
+- 推薦使用 [esm.sh](https://esm.sh/) 或 [jspm.org](https://jspm.org/) 下載對應版本的 `.js` 檔案存放於 `assets/lib/`。
+
 ## 🛠️ 後端連線配置
 系統預設連線至後端 API 服務：`https://localhost:7201/api`。
 
