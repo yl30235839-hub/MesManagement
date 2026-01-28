@@ -71,9 +71,46 @@ npx @tailwindcss/cli -i ./style.css -o ./dist/output.css --watch
   - 存放至 `assets/textures/city.hdr`。
   - 修改 `Line3DView.tsx`：`<Environment files="./assets/textures/city.hdr" />`。
 
-### 4. 核心程式庫 (ES Modules)
-若需完全離線，請將 `index.html` 中 `importmap` 的網址替換為本地路徑：
-- 推薦使用 [esm.sh](https://esm.sh/) 或 [jspm.org](https://jspm.org/) 下載對應版本的 `.js` 檔案存放於 `assets/lib/`。
+### 4. 核心程式庫 (ES Modules) 離線化詳解
+在封閉內網環境中，瀏覽器無法訪問 CDN (如 `aistudiocdn.com`)。請按照以下步驟手動下載依賴並更新 `importmap`。
+
+#### A. 下載依賴文件
+建議使用 `esm.sh` 的 `?bundle` 模式下載所有子依賴合併後的單一文件。在有網路的機器執行以下指令：
+
+```bash
+mkdir -p assets/lib
+# 下載 React 與相關庫
+curl -L https://esm.sh/react@19.2.1?bundle -o assets/lib/react.js
+curl -L https://esm.sh/react-dom@19.2.1?bundle -o assets/lib/react-dom.js
+curl -L https://esm.sh/lucide-react?bundle -o assets/lib/lucide-react.js
+curl -L https://esm.sh/three?bundle -o assets/lib/three.js
+# ...以此類推下載所有 importmap 中的項目
+```
+
+#### B. 修改 index.html 中的 Import Map
+將網址替換為相對於 `index.html` 的本地路徑：
+
+```json
+<script type="importmap">
+{
+  "imports": {
+    "react": "./assets/lib/react.js",
+    "react-dom/": "./assets/lib/react-dom/",
+    "react-dom": "./assets/lib/react-dom.js",
+    "lucide-react": "./assets/lib/lucide-react.js",
+    "three": "./assets/lib/three.js",
+    "@react-three/fiber": "./assets/lib/react-three-fiber.js",
+    "@react-three/drei": "./assets/lib/react-three-drei.js",
+    "recharts": "./assets/lib/recharts.js",
+    "axios": "./assets/lib/axios.js"
+  }
+}
+</script>
+```
+
+#### C. 注意事項
+- **版本一致性**：確保下載的 `.js` 文件版本與代碼要求的版本一致。
+- **MIME 類型**：離線伺服器（如 Nginx 或 IIS）必須配置 `.js` 文件的 MIME 類型為 `application/javascript` 或 `text/javascript`。
 
 ## 🛠️ 後端連線配置
 系統預設連線至後端 API 服務：`https://localhost:7201/api`。

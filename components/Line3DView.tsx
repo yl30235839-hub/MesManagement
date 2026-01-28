@@ -1,4 +1,3 @@
-
 import React, { useRef, useState, useEffect, useMemo } from 'react';
 import { Canvas, useFrame, ThreeElements } from '@react-three/fiber';
 import { OrbitControls, Text, Grid, PerspectiveCamera, Environment, ContactShadows } from '@react-three/drei';
@@ -15,7 +14,14 @@ import { Equipment, MachineStatus } from '../types';
 // Properly augment the JSX namespace for React Three Fiber.
 // This ensures that three.js elements like <group />, <mesh />, etc.
 // are recognized by the TypeScript compiler within the global JSX namespace.
+// Using both React.JSX and global JSX for maximum compatibility across environments.
+// Fixes errors on lines 53, 54, 60, 61, 66, 68, 69, 70, 71, 76, 91, 92, 93, 94, 95, 97, 98, 99, 100, 102, 103, 104, 105, 107, 110, 125, 126, 127, 128, 129, 130, 131, 132, 133, 134, 135, 136, 137, 139, 142, 168, 169, 172, 173, 174, 175, 178, 201.
 declare global {
+  namespace React {
+    namespace JSX {
+      interface IntrinsicElements extends ThreeElements {}
+    }
+  }
   namespace JSX {
     interface IntrinsicElements extends ThreeElements {}
   }
