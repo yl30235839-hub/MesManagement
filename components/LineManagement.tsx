@@ -2,7 +2,10 @@
 import React, { useState } from 'react';
 import { MOCK_LINES } from '../constants';
 import { MachineStatus, ProductionLine } from '../types';
-import { PlayCircle, StopCircle, AlertTriangle, Settings, Plus, Monitor, X, Layers } from 'lucide-react';
+import { 
+  PlayCircle, StopCircle, AlertTriangle, Settings, Plus, 
+  Monitor, X, Layers, Building2, Save, RotateCw, MapPin 
+} from 'lucide-react';
 
 interface LineManagementProps {
   onViewEquipment: (lineId: string) => void;
@@ -12,6 +15,10 @@ const LineManagement: React.FC<LineManagementProps> = ({ onViewEquipment }) => {
   const [lines, setLines] = useState<ProductionLine[]>(MOCK_LINES);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newLineData, setNewLineData] = useState({ name: '', description: '', category: 'Vulkan-A' });
+  
+  // Factory Info State
+  const [factoryInfo, setFactoryInfo] = useState({ code: 'GL', floor: '3F' });
+  const [isSavingFactory, setIsSavingFactory] = useState(false);
 
   const getStatusColor = (status: MachineStatus) => {
     switch (status) {
@@ -20,6 +27,14 @@ const LineManagement: React.FC<LineManagementProps> = ({ onViewEquipment }) => {
       case MachineStatus.Warning: return 'bg-orange-100 text-orange-700 border-orange-200';
       default: return 'bg-gray-100';
     }
+  };
+
+  const handleSaveFactory = () => {
+    setIsSavingFactory(true);
+    setTimeout(() => {
+      setIsSavingFactory(false);
+      alert('工廠基礎信息已成功保存並更新。');
+    }, 800);
   };
 
   const handleAddLine = () => {
@@ -40,20 +55,71 @@ const LineManagement: React.FC<LineManagementProps> = ({ onViewEquipment }) => {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center mb-4">
+    <div className="space-y-6 animate-in fade-in duration-500">
+      {/* Factory Information Section (New) */}
+      <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+        <div className="flex items-center mb-6 border-b border-slate-100 pb-3">
+          <Building2 size={20} className="text-blue-600 mr-2" />
+          <h3 className="text-lg font-bold text-slate-800">工廠基礎信息維護</h3>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-slate-500 uppercase flex items-center">
+              <MapPin size={12} className="mr-1" /> 廠區代碼 (Factory Code)
+            </label>
+            <input 
+              type="text" 
+              value={factoryInfo.code}
+              onChange={(e) => setFactoryInfo({...factoryInfo, code: e.target.value})}
+              placeholder="例如: GL"
+              className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm font-mono transition-all"
+            />
+          </div>
+          
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-slate-500 uppercase flex items-center">
+              <Layers size={12} className="mr-1" /> 所在樓層 (Floor)
+            </label>
+            <input 
+              type="text" 
+              value={factoryInfo.floor}
+              onChange={(e) => setFactoryInfo({...factoryInfo, floor: e.target.value})}
+              placeholder="例如: 3F"
+              className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm font-mono transition-all"
+            />
+          </div>
+          
+          <button 
+            onClick={handleSaveFactory}
+            disabled={isSavingFactory}
+            className="flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white px-8 py-2.5 rounded-xl font-bold text-sm shadow-md shadow-blue-100 transition-all active:scale-95 disabled:opacity-50"
+          >
+            {isSavingFactory ? (
+              <RotateCw size={18} className="animate-spin mr-2" />
+            ) : (
+              <Save size={18} className="mr-2" />
+            )}
+            {isSavingFactory ? '保存中...' : '保存工廠信息'}
+          </button>
+        </div>
+      </div>
+
+      {/* Header for Lines */}
+      <div className="flex justify-between items-center pt-2">
         <div>
-          <h3 className="text-xl font-bold text-slate-800">工廠管理 - 産綫狀態</h3>
-          <p className="text-sm text-slate-500">當前監控範圍：台北總廠</p>
+          <h3 className="text-xl font-bold text-slate-800">產綫實例管理</h3>
+          <p className="text-sm text-slate-500">當前監控範圍：{factoryInfo.code} 廠區 / {factoryInfo.floor}</p>
         </div>
         <button 
           onClick={() => setIsModalOpen(true)} 
-          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center shadow-sm"
+          className="bg-slate-800 hover:bg-slate-900 text-white px-5 py-2.5 rounded-xl text-sm font-bold flex items-center shadow-lg transition-all active:scale-95"
         >
-          <Plus size={16} className="mr-1" /> 新增產綫實例
+          <Plus size={18} className="mr-1.5" /> 新增產綫
         </button>
       </div>
 
+      {/* Lines Grid */}
       <div className="grid gap-6">
         {lines.map((line) => (
           <div key={line.id} className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 hover:shadow-lg transition-all">
@@ -104,7 +170,7 @@ const LineManagement: React.FC<LineManagementProps> = ({ onViewEquipment }) => {
 
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
             <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
               <h3 className="font-bold text-lg text-slate-800">新增產綫實例</h3>
               <button onClick={() => setIsModalOpen(false)} className="text-slate-400"><X size={20} /></button>
@@ -112,16 +178,16 @@ const LineManagement: React.FC<LineManagementProps> = ({ onViewEquipment }) => {
             <div className="p-6 space-y-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">産綫名稱 *</label>
-                <input type="text" value={newLineData.name} onChange={(e) => setNewLineData({...newLineData, name: e.target.value})} className="w-full px-4 py-2 border border-slate-300 rounded-xl" placeholder="例如: Assembly Line B" />
+                <input type="text" value={newLineData.name} onChange={(e) => setNewLineData({...newLineData, name: e.target.value})} className="w-full px-4 py-2 border border-slate-300 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" placeholder="例如: Assembly Line B" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">描述</label>
-                <textarea value={newLineData.description} onChange={(e) => setNewLineData({...newLineData, description: e.target.value})} className="w-full px-4 py-2 border border-slate-300 rounded-xl" placeholder="產線功能說明..." />
+                <textarea value={newLineData.description} onChange={(e) => setNewLineData({...newLineData, description: e.target.value})} className="w-full px-4 py-2 border border-slate-300 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" placeholder="產線功能說明..." />
               </div>
             </div>
             <div className="px-6 py-4 bg-slate-50 border-t flex justify-end space-x-3">
-              <button onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-slate-500 font-medium">取消</button>
-              <button onClick={handleAddLine} className="px-6 py-2 bg-blue-600 text-white rounded-lg font-bold">創建</button>
+              <button onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-slate-500 font-medium hover:text-slate-700 transition-colors">取消</button>
+              <button onClick={handleAddLine} className="px-6 py-2 bg-blue-600 text-white rounded-lg font-bold shadow-md shadow-blue-100 hover:bg-blue-700 transition-all active:scale-95">創建產綫</button>
             </div>
           </div>
         </div>

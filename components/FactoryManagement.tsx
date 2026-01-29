@@ -1,8 +1,25 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { MOCK_FACTORIES } from '../constants';
-import { MapPin, Users, Activity, BarChart3 } from 'lucide-react';
+import { 
+  MapPin, Users, Activity, BarChart3, 
+  Building2, Layers, Save, CheckCircle, RotateCw 
+} from 'lucide-react';
 
 const FactoryManagement: React.FC = () => {
+  const [factoryConfig, setFactoryConfig] = useState({
+    code: 'GL',
+    floor: '3F'
+  });
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSaveConfig = () => {
+    setIsSaving(true);
+    setTimeout(() => {
+      setIsSaving(false);
+      alert('工廠基礎信息已成功更新！');
+    }, 800);
+  };
+
   return (
     <div className="space-y-6">
       {/* KPI Cards */}
@@ -65,6 +82,64 @@ const FactoryManagement: React.FC = () => {
           <div className="mt-4 text-sm text-slate-400 flex items-center font-medium">
             Active staff
           </div>
+        </div>
+      </div>
+
+      {/* Factory Information Section (New) */}
+      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden animate-in fade-in slide-in-from-top-4 duration-500">
+        <div className="px-6 py-4 border-b border-slate-200 flex items-center bg-slate-50">
+          <Building2 size={20} className="text-indigo-600 mr-2" />
+          <h3 className="text-lg font-semibold text-slate-800">工廠環境信息維護</h3>
+        </div>
+        <div className="p-6">
+          <div className="flex flex-col md:flex-row items-end gap-6">
+            <div className="flex-1 space-y-1 w-full">
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center">
+                廠區代碼 (Factory Code)
+              </label>
+              <div className="relative">
+                <MapPin size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input 
+                  type="text" 
+                  value={factoryConfig.code}
+                  onChange={(e) => setFactoryConfig({...factoryConfig, code: e.target.value})}
+                  placeholder="如: GL, TW, US"
+                  className="w-full pl-10 pr-4 py-2.5 border border-slate-300 rounded-lg text-sm font-mono focus:ring-2 focus:ring-indigo-500 outline-none transition-all" 
+                />
+              </div>
+            </div>
+            <div className="flex-1 space-y-1 w-full">
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center">
+                樓層 (Floor)
+              </label>
+              <div className="relative">
+                <Layers size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input 
+                  type="text" 
+                  value={factoryConfig.floor}
+                  onChange={(e) => setFactoryConfig({...factoryConfig, floor: e.target.value})}
+                  placeholder="如: 3F, B1"
+                  className="w-full pl-10 pr-4 py-2.5 border border-slate-300 rounded-lg text-sm font-mono focus:ring-2 focus:ring-indigo-500 outline-none transition-all" 
+                />
+              </div>
+            </div>
+            <button 
+              onClick={handleSaveConfig}
+              disabled={isSaving}
+              className="flex items-center px-8 py-2.5 bg-indigo-600 text-white rounded-lg font-bold text-sm shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all active:scale-95 disabled:opacity-50 h-[42px]"
+            >
+              {isSaving ? (
+                <RotateCw size={18} className="animate-spin mr-2" />
+              ) : (
+                <Save size={18} className="mr-2" />
+              )}
+              {isSaving ? '保存中...' : '保存配置'}
+            </button>
+          </div>
+          <p className="mt-3 text-[10px] text-slate-400 flex items-center">
+            <CheckCircle size={10} className="mr-1 text-green-500" /> 
+            此配置將應用於當前產線實例的全局標識與邏輯定位
+          </p>
         </div>
       </div>
 

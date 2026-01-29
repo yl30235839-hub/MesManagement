@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { 
   ArrowLeft, FileWarning, Search, Filter, 
@@ -99,11 +98,11 @@ const FACAManagement: React.FC<FACAManagementProps> = ({ onBack }) => {
         <div className="w-1/3 flex flex-col bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="p-4 border-b border-slate-200 bg-slate-50 flex justify-between items-center">
             <h3 className="font-bold text-slate-800 flex items-center">
-              <Clock size={18} className="mr-2 text-red-500" /> 待上傳列表
+              <Clock size={18} className="mr-2 text-red-500" /> 待處理列表
             </h3>
             <span className="bg-red-100 text-red-700 text-xs font-bold px-2 py-1 rounded-full">{MOCK_PENDING.filter(i => i.status !== 'COMPLETED').length} 條異常</span>
           </div>
-          <div className="flex-1 overflow-y-auto p-3 space-y-3 bg-slate-50/50">
+          <div className="flex-1 overflow-y-auto p-3 space-y-3 bg-slate-50/50 custom-scrollbar">
             {MOCK_PENDING.map(item => (
               <div 
                 key={item.id} 
@@ -133,8 +132,8 @@ const FACAManagement: React.FC<FACAManagementProps> = ({ onBack }) => {
         {/* Right: Analysis Form */}
         <div className="flex-1 bg-white rounded-xl border border-slate-200 shadow-sm flex flex-col overflow-hidden">
           {selectedId ? (
-            <form onSubmit={handleSubmitFACA} className="flex-1 flex flex-col">
-              <div className="p-6 border-b border-slate-200 bg-white">
+            <form onSubmit={handleSubmitFACA} className="flex-1 flex flex-col min-h-0">
+              <div className="p-6 border-b border-slate-200 bg-white shrink-0">
                 <div className="flex justify-between items-center">
                   <div>
                     <h3 className="text-xl font-bold text-slate-800 flex items-center">
@@ -153,7 +152,8 @@ const FACAManagement: React.FC<FACAManagementProps> = ({ onBack }) => {
                 </div>
               </div>
 
-              <div className="flex-1 overflow-y-auto p-8 space-y-8">
+              {/* Scrollable Content Part */}
+              <div className="flex-1 overflow-y-auto p-8 space-y-8 custom-scrollbar min-h-0">
                 {/* Section 1: Basic Fault Info */}
                 <div className="grid grid-cols-2 gap-8">
                   <div className="space-y-4">

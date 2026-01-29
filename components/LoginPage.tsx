@@ -1,6 +1,5 @@
-
 import React, { useState } from 'react';
-import { KeyRound, User, Lock, ArrowRight, UserPlus } from 'lucide-react';
+import { KeyRound, User, Lock, ArrowRight } from 'lucide-react';
 import api from '../services/api';
 
 interface LoginPageProps {
@@ -112,14 +111,6 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onGoToRegister }) => {
                     登入系統 <ArrowRight size={18} className="ml-2" />
                   </>
                 )}
-              </button>
-
-              <button
-                type="button"
-                onClick={onGoToRegister}
-                className="w-full flex items-center justify-center text-blue-600 hover:text-blue-700 font-medium py-2 transition-colors text-sm"
-              >
-                <UserPlus size={16} className="mr-2" /> 用戶註冊
               </button>
             </div>
           </form>

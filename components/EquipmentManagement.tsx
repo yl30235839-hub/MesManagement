@@ -1,10 +1,10 @@
-
 import React, { useState } from 'react';
 import { MachineStatus, Equipment } from '../types';
 import { 
   Thermometer, Activity, Wrench, Clock, Settings, Filter, 
   Database, Table as TableIcon, Plus, Trash2, Cpu, 
-  Search, Key, List, X, GripVertical, Building, MapPin, Hash
+  Search, Key, List, X, GripVertical, Building, MapPin, Hash,
+  Save, RotateCw, Network, ClipboardList, Layers, Monitor, Info
 } from 'lucide-react';
 
 interface EquipmentManagementProps {
@@ -17,6 +17,20 @@ interface EquipmentManagementProps {
 const EquipmentManagement: React.FC<EquipmentManagementProps> = ({ lineId, equipmentList, onAddEquipment, onMaintainDevice }) => {
   const [activeTab, setActiveTab] = useState<'STATUS' | 'DATABASE'>('STATUS');
   
+  // Production Line Maintenance State
+  const [lineInfo, setLineInfo] = useState({
+    name: 'Assembly Line A-01',
+    hostIp: '10.55.120.42',
+    station: 'Final Assembly',
+    model: 'Vulkan-X Pro',
+    phase: 'Mass Production (MP)',
+    process: 'SMT-AOI-FA',
+    phmOrder: 'PHM-2024-00892',
+    lineCategory: 'Main Stream',
+    description: '核心組裝產綫，配備雙臂協作機器人與視覺掃描模組。'
+  });
+  const [isSavingLine, setIsSavingLine] = useState(false);
+
   // Modal State for Adding Equipment
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [newEquipData, setNewEquipData] = useState({
@@ -32,8 +46,15 @@ const EquipmentManagement: React.FC<EquipmentManagementProps> = ({ lineId, equip
     ? equipmentList.filter(e => e.lineId === lineId) 
     : equipmentList;
 
+  const handleSaveLineInfo = () => {
+    setIsSavingLine(true);
+    setTimeout(() => {
+      setIsSavingLine(false);
+      alert('產綫環境配置信息已成功更新！');
+    }, 800);
+  };
+
   const handleAddEquipment = () => {
-    // Check required fields based on type
     if (newEquipData.type === '打卡設備') {
       if (!newEquipData.name.trim() || !newEquipData.factoryArea.trim() || !newEquipData.floor.trim() || !newEquipData.sn.trim()) {
         alert("請填寫所有打卡設備必要參數");
@@ -55,11 +76,10 @@ const EquipmentManagement: React.FC<EquipmentManagementProps> = ({ lineId, equip
       temperature: 20,
       vibration: 0,
       lastMaintenance: new Date().toISOString().split('T')[0],
-      // Clock-in specific
       factoryArea: newEquipData.factoryArea,
       floor: newEquipData.floor,
       sn: newEquipData.sn,
-      fingerprintId: '1' // Default
+      fingerprintId: '1'
     };
     
     onAddEquipment(newEquip);
@@ -83,8 +103,131 @@ const EquipmentManagement: React.FC<EquipmentManagementProps> = ({ lineId, equip
         </button>
       </div>
 
-      <div className="animate-in fade-in duration-300">
-        <div className="flex justify-between items-center mb-6">
+      <div className="animate-in fade-in duration-300 space-y-8">
+        {/* Production Line Maintenance Section (New) */}
+        {activeTab === 'STATUS' && (
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
+              <div className="flex items-center text-slate-800">
+                <Settings size={20} className="text-blue-600 mr-2" />
+                <h3 className="font-bold">產綫信息維護</h3>
+              </div>
+              <button 
+                onClick={handleSaveLineInfo}
+                disabled={isSavingLine}
+                className="flex items-center px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-100 transition-all active:scale-95 disabled:opacity-50"
+              >
+                {isSavingLine ? <RotateCw size={14} className="animate-spin mr-2" /> : <Save size={14} className="mr-2" />}
+                {isSavingLine ? '正在保存...' : '保存產綫配置'}
+              </button>
+            </div>
+            <div className="p-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-6 gap-y-4">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center">
+                    <Layers size={12} className="mr-1 text-blue-500" /> 綫體名稱
+                  </label>
+                  <input 
+                    type="text" 
+                    value={lineInfo.name} 
+                    onChange={(e) => setLineInfo({...lineInfo, name: e.target.value})}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center">
+                    <Monitor size={12} className="mr-1 text-blue-500" /> 主機 IP
+                  </label>
+                  <input 
+                    type="text" 
+                    value={lineInfo.hostIp} 
+                    onChange={(e) => setLineInfo({...lineInfo, hostIp: e.target.value})}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm font-mono focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center">
+                    <MapPin size={12} className="mr-1 text-blue-500" /> 工站
+                  </label>
+                  <input 
+                    type="text" 
+                    value={lineInfo.station} 
+                    onChange={(e) => setLineInfo({...lineInfo, station: e.target.value})}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center">
+                    <Hash size={12} className="mr-1 text-blue-500" /> 機種
+                  </label>
+                  <input 
+                    type="text" 
+                    value={lineInfo.model} 
+                    onChange={(e) => setLineInfo({...lineInfo, model: e.target.value})}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm font-semibold focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center">
+                    <Activity size={12} className="mr-1 text-blue-500" /> 階段
+                  </label>
+                  <input 
+                    type="text" 
+                    value={lineInfo.phase} 
+                    onChange={(e) => setLineInfo({...lineInfo, phase: e.target.value})}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center">
+                    <Wrench size={12} className="mr-1 text-blue-500" /> 製程
+                  </label>
+                  <input 
+                    type="text" 
+                    value={lineInfo.process} 
+                    onChange={(e) => setLineInfo({...lineInfo, process: e.target.value})}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center">
+                    <ClipboardList size={12} className="mr-1 text-blue-500" /> PHM執行單號
+                  </label>
+                  <input 
+                    type="text" 
+                    value={lineInfo.phmOrder} 
+                    onChange={(e) => setLineInfo({...lineInfo, phmOrder: e.target.value})}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm font-mono focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center">
+                    <Network size={12} className="mr-1 text-blue-500" /> 綫別
+                  </label>
+                  <input 
+                    type="text" 
+                    value={lineInfo.lineCategory} 
+                    onChange={(e) => setLineInfo({...lineInfo, lineCategory: e.target.value})}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                  />
+                </div>
+                <div className="md:col-span-2 lg:col-span-3 xl:col-span-4 space-y-1 pt-2">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center">
+                    <Info size={12} className="mr-1 text-blue-500" /> 描述
+                  </label>
+                  <textarea 
+                    value={lineInfo.description} 
+                    onChange={(e) => setLineInfo({...lineInfo, description: e.target.value})}
+                    rows={2}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all resize-none"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className="flex justify-between items-center">
           <div>
             <h2 className="text-xl font-bold text-slate-800">產綫設備詳情</h2>
             {lineId && <p className="text-sm text-slate-500 mt-1">當前產綫: <span className="font-mono font-bold text-blue-600">{lineId}</span></p>}
@@ -97,7 +240,7 @@ const EquipmentManagement: React.FC<EquipmentManagementProps> = ({ lineId, equip
           </button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 pb-10">
           {activeEquipmentList.length === 0 ? (
             <div className="col-span-full py-12 text-center text-slate-500 bg-white rounded-xl border border-slate-200 border-dashed">
               目前暫無設備。

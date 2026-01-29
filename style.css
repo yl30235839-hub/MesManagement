@@ -89,6 +89,20 @@
     scrollbar-width: none; /* Firefox */
   }
 
+  /* 自定義精緻滾動條 */
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    @apply bg-slate-300/50 rounded-full hover:bg-slate-400/80 transition-colors;
+  }
+
   /* 磨砂玻璃效果 */
   .glass-effect {
     @apply bg-white/80 backdrop-blur-md border border-white/20;

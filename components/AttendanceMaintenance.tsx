@@ -1,11 +1,10 @@
-
 import React, { useState } from 'react';
 import { 
   ArrowLeft, Search, Filter, Download, UserCheck, 
   UserX, Clock, Edit3, MoreVertical, ChevronLeft, 
   ChevronRight, FileText, UserPlus, CloudUpload, 
   Trash2, User, Users as UsersIcon, Calendar as CalendarIcon,
-  X, CheckCircle, AlertCircle
+  X, CheckCircle, AlertCircle, RefreshCw
 } from 'lucide-react';
 
 interface AttendanceRecord {
@@ -52,7 +51,17 @@ const AttendanceMaintenance: React.FC<AttendanceMaintenanceProps> = ({ onBack, o
   const [activeView, setActiveView] = useState<'RECORDS' | 'PERSONNEL'>('RECORDS');
   const [searchTerm, setSearchTerm] = useState('');
   const [isUploading, setIsUploading] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [personnelList, setPersonnelList] = useState<Personnel[]>(INITIAL_PERSONNEL);
+
+  const handleRefresh = () => {
+    setIsRefreshing(true);
+    // Simulate data fetching delay
+    setTimeout(() => {
+      setIsRefreshing(false);
+      console.log(`Refreshed ${activeView === 'RECORDS' ? 'Attendance Records' : 'Personnel List'}`);
+    }, 1000);
+  };
 
   const handleUploadReport = () => {
     setIsUploading(true);
@@ -188,6 +197,14 @@ const AttendanceMaintenance: React.FC<AttendanceMaintenanceProps> = ({ onBack, o
             />
           </div>
           <div className="flex gap-2">
+            <button 
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+              title={`刷新${activeView === 'RECORDS' ? '考勤記錄' : '人員管理'}`}
+              className="p-2 border border-slate-300 rounded-lg hover:bg-white text-slate-500 hover:text-blue-600 transition-all active:scale-95 disabled:opacity-50"
+            >
+              <RefreshCw size={18} className={isRefreshing ? 'animate-spin' : ''} />
+            </button>
             <button className="p-2 border border-slate-300 rounded-lg hover:bg-white text-slate-500"><Filter size={18} /></button>
           </div>
         </div>
@@ -205,7 +222,7 @@ const AttendanceMaintenance: React.FC<AttendanceMaintenanceProps> = ({ onBack, o
                   <th className="px-6 py-4 text-right">操作</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 text-sm">
+              <tbody className={`divide-y divide-slate-100 text-sm transition-opacity duration-300 ${isRefreshing ? 'opacity-40' : 'opacity-100'}`}>
                 {MOCK_RECORDS.filter(r => r.name.includes(searchTerm) || r.employeeId.includes(searchTerm)).map((record) => (
                   <tr key={record.id} className="hover:bg-blue-50 transition-colors group">
                     <td className="px-6 py-4">
@@ -249,7 +266,7 @@ const AttendanceMaintenance: React.FC<AttendanceMaintenanceProps> = ({ onBack, o
                   <th className="px-6 py-4 text-right">管理操作</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 text-sm">
+              <tbody className={`divide-y divide-slate-100 text-sm transition-opacity duration-300 ${isRefreshing ? 'opacity-40' : 'opacity-100'}`}>
                 {personnelList.filter(p => p.name.includes(searchTerm) || p.employeeId.includes(searchTerm)).map((person) => (
                   <tr key={person.id} className="hover:bg-blue-50 transition-colors group">
                     <td className="px-6 py-4">

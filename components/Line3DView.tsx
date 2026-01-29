@@ -11,17 +11,9 @@ import {
 } from 'lucide-react';
 import { Equipment, MachineStatus } from '../types';
 
-// Properly augment the JSX namespace for React Three Fiber.
-// This ensures that three.js elements like <group />, <mesh />, etc.
-// are recognized by the TypeScript compiler within the global JSX namespace.
-// Using both React.JSX and global JSX for maximum compatibility across environments.
-// Fixes errors on lines 53, 54, 60, 61, 66, 68, 69, 70, 71, 76, 91, 92, 93, 94, 95, 97, 98, 99, 100, 102, 103, 104, 105, 107, 110, 125, 126, 127, 128, 129, 130, 131, 132, 133, 134, 135, 136, 137, 139, 142, 168, 169, 172, 173, 174, 175, 178, 201.
+// Fix: Extend the JSX namespace to include Three.js intrinsic elements provided by React Three Fiber
+// This resolves "Property '...' does not exist on type 'JSX.IntrinsicElements'" errors.
 declare global {
-  namespace React {
-    namespace JSX {
-      interface IntrinsicElements extends ThreeElements {}
-    }
-  }
   namespace JSX {
     interface IntrinsicElements extends ThreeElements {}
   }
@@ -56,6 +48,7 @@ const MachineModel: React.FC<ItemProps> = ({ data, isSelected, onClick, position
   });
 
   return (
+    // Fix: JSX elements like group and mesh are now recognized through the IntrinsicElements extension
     <group position={position} onClick={(e: any) => { e.stopPropagation(); onClick(data); }}>
       <mesh 
         ref={meshRef} 
@@ -94,6 +87,7 @@ const AGVModel: React.FC<ItemProps> = ({ data, isSelected, onClick, position }) 
   });
 
   return (
+    // Fix: JSX elements like group and mesh are now recognized through the IntrinsicElements extension
     <group ref={groupRef} position={position} onClick={(e: any) => { e.stopPropagation(); onClick(data); }}>
       <mesh position={[0, 0.3, 0]} onPointerOver={() => setHovered(true)} onPointerOut={() => setHovered(false)}>
         <boxGeometry args={[2.5, 0.6, 1.8]} />
@@ -128,6 +122,7 @@ const FingerprintModel: React.FC<ItemProps> = ({ data, isSelected, onClick, posi
   });
   
   return (
+    // Fix: JSX elements like group and mesh are now recognized through the IntrinsicElements extension
     <group position={position} onClick={(e: any) => { e.stopPropagation(); onClick(data); }}>
       <mesh position={[0, 0.7, 0]} onPointerOver={() => { setHovered(true); document.body.style.cursor = 'pointer'; }} onPointerOut={() => { setHovered(false); document.body.style.cursor = 'auto'; }}>
         <boxGeometry args={[0.6, 1.4, 0.6]} />
@@ -171,6 +166,7 @@ const FactoryScene: React.FC<{
 
   return (
     <>
+      {/* Fix: ambientLight and directionalLight are now typed via JSX extension */}
       <ambientLight intensity={0.8} />
       <directionalLight position={[10, 20, 10]} intensity={1.5} castShadow />
       <Grid position={[0, 0, 0]} args={[100, 100]} cellColor="#cbd5e1" sectionColor="#94a3b8" fadeDistance={50} infiniteGrid />
