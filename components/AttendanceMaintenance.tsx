@@ -303,7 +303,6 @@ const AttendanceMaintenance: React.FC<AttendanceMaintenanceProps> = ({ lineId, d
 
   const handleSaveEdit = (updatedData: any) => {
     console.log('Saving personnel updates:', updatedData);
-    // In a real app, you would send this to the server
     setPersonnelList(prev => prev.map(p => 
       p.employeeId === updatedData.employeeId 
         ? { 
@@ -354,13 +353,25 @@ const AttendanceMaintenance: React.FC<AttendanceMaintenanceProps> = ({ lineId, d
           <button className="flex items-center px-4 py-2 bg-white border border-slate-200 text-slate-600 text-sm font-medium rounded-lg hover:bg-slate-50 transition-colors">
             <Download size={16} className="mr-2" /> 導出報表
           </button>
+          
+          {/* 修改點：在人員管理視圖中添加批量導入按鈕 */}
           {activeView === 'PERSONNEL' && (
-            <button 
-              onClick={onGoToRegister}
-              className="flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors shadow-md shadow-blue-200"
-            >
-              <UserPlus size={16} className="mr-2" /> 新增人員
-            </button>
+            <>
+              <button 
+                onClick={handleBatchImportClick}
+                disabled={isImporting}
+                className="flex items-center px-4 py-2 bg-white border border-slate-200 text-slate-600 text-sm font-medium rounded-lg hover:bg-slate-50 transition-colors"
+              >
+                {isImporting ? <RefreshCw size={16} className="mr-2 animate-spin text-blue-500" /> : <FileUp size={16} className="mr-2 text-blue-500" />}
+                {isImporting ? '導入中...' : '批量導入'}
+              </button>
+              <button 
+                onClick={onGoToRegister}
+                className="flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors shadow-md shadow-blue-200"
+              >
+                <UserPlus size={16} className="mr-2" /> 新增人員
+              </button>
+            </>
           )}
         </div>
       </div>

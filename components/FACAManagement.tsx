@@ -6,7 +6,8 @@ import {
   CloudUpload, Trash2, Edit3, Tag,
   Activity, BarChart2, BookOpen, MousePointer2, Check,
   Wrench, ClipboardList, Square, CheckSquare,
-  Package, PlusCircle, XCircle, Info, X, IdCard, Building2
+  Package, PlusCircle, XCircle, Info, X, IdCard, Building2,
+  MessageSquare, Sparkles
 } from 'lucide-react';
 
 interface FACAPendingItem {
@@ -44,9 +45,9 @@ interface PartRecord {
 }
 
 const MOCK_PENDING: FACAPendingItem[] = [
-  { id: 'F-20240320-001', date: '2024-03-20', startTime: '09:45:12', endTime: '10:15:30', machineName: 'Robotic Arm Beta', alarmCode: 'E-042', alarmContent: '伺服電機過載報警', status: 'AWAITING' },
-  { id: 'F-20240320-002', date: '2024-03-20', startTime: '11:20:00', endTime: '11:25:00', machineName: 'CNC Milling Unit A', alarmCode: 'W-015', alarmContent: '切削液壓力低', status: 'AWAITING' },
-  { id: 'F-20240319-015', date: '2024-03-19', startTime: '14:30:00', endTime: '15:45:00', machineName: 'Assembly Line A', alarmCode: 'S-001', alarmContent: '緊急停止觸發', status: 'ANALYZING' },
+  { id: 'F-20240320-001', date: '2024-03-20', startTime: '09:45:12', endTime: '10:15:30', machineName: 'Robotic Arm Beta', alarmCode: 'E-042', alarmContent: '伺服電機過載報警：檢測到電流持續超過額定值 120%，觸發保護停機。', status: 'AWAITING' },
+  { id: 'F-20240320-002', date: '2024-03-20', startTime: '11:20:00', endTime: '11:25:00', machineName: 'CNC Milling Unit A', alarmCode: 'W-015', alarmContent: '切削液壓力低：管路壓力低於 0.2MPa，可能存在泵浦故障或濾網堵塞。', status: 'AWAITING' },
+  { id: 'F-20240319-015', date: '2024-03-19', startTime: '14:30:00', endTime: '15:45:00', machineName: 'Assembly Line A', alarmCode: 'S-001', alarmContent: '緊急停止觸發：安全迴路斷開，外部緊急停止按鈕被按下或安全開關異常。', status: 'ANALYZING' },
 ];
 
 const MOCK_FACA_SOLUTIONS: FACASolution[] = [
@@ -283,7 +284,7 @@ const FACAManagement: React.FC<FACAManagementProps> = ({ onBack }) => {
 
               {/* Scrollable Content */}
               <div className="flex-1 overflow-y-auto p-8 space-y-10 custom-scrollbar min-h-0">
-                {/* Section 1: Basic Fault Info & Handler Info (Enhanced) */}
+                {/* Section 1: Basic Fault Info & Handler Info */}
                 <div className="grid grid-cols-2 gap-x-8 gap-y-6">
                   <div className="space-y-4">
                     <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">故障代碼</label>
@@ -291,13 +292,29 @@ const FACAManagement: React.FC<FACAManagementProps> = ({ onBack }) => {
                       {selectedItem?.alarmCode}
                     </div>
                   </div>
-                  {/* 新增：設備名稱展示欄位 */}
                   <div className="space-y-4">
                     <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">設備名稱</label>
                     <div className="p-3 bg-slate-50 rounded-lg border border-slate-100 text-slate-700 font-bold">
                       {selectedItem?.machineName}
                     </div>
                   </div>
+                  
+                  {/* 修改後：故障描述控件 - 自動生成且唯讀 */}
+                  <div className="col-span-2 space-y-4">
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center justify-between">
+                      <div className="flex items-center">
+                        <MessageSquare size={14} className="mr-1.5 text-blue-500" /> 
+                        故障描述 (故障代碼 {selectedItem?.alarmCode} 自動關聯內容)
+                      </div>
+                      <span className="text-[10px] text-blue-500 font-bold bg-blue-50 px-2 py-0.5 rounded flex items-center">
+                        <Sparkles size={10} className="mr-1" /> 系統自動帶出
+                      </span>
+                    </label>
+                    <div className="w-full p-4 border border-blue-100 rounded-xl bg-blue-50/30 text-sm text-slate-600 italic leading-relaxed shadow-inner">
+                      {selectedItem?.alarmContent || "無對應故障代碼描述信息"}
+                    </div>
+                  </div>
+
                   <div className="space-y-4">
                     <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">處理人名稱</label>
                     <div className="relative">

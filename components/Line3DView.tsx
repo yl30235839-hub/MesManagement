@@ -5,10 +5,9 @@ import { OrbitControls, Text, Grid, PerspectiveCamera, Environment, ContactShado
 import * as THREE from 'three';
 import api from '../services/api';
 import { 
-  X, Thermometer, Activity, Clock, Cpu, Maximize2, Minimize2, 
-  Fingerprint, ChevronRight, Calendar, Truck, Layers,
+  X, Thermometer, Activity, Clock, Cpu, ChevronRight, Calendar, Truck, Layers,
   Play, Square, User, Hash, CheckCircle2, ClipboardEdit, Save, AlertCircle,
-  Scan, ShieldCheck, FileWarning, MessageSquare, Edit3
+  Scan, ShieldCheck, FileWarning, MessageSquare, Edit3, Fingerprint
 } from 'lucide-react';
 import { Equipment, MachineStatus, EquipmentType } from '../types';
 
@@ -53,12 +52,6 @@ const MachineModel: React.FC<ItemProps> = ({ data, isSelected, onClick, position
   const meshRef = useRef<THREE.Mesh>(null);
   const [hovered, setHovered] = useState(false);
   
-  useFrame((state) => {
-    if (meshRef.current && data.status === MachineStatus.Running) {
-      meshRef.current.rotation.y += 0.01;
-    }
-  });
-
   return (
     <group position={position} onClick={(e: any) => { e.stopPropagation(); onClick(data); }}>
       <mesh 
@@ -234,7 +227,6 @@ interface Line3DViewProps {
 
 const Line3DView: React.FC<Line3DViewProps> = ({ equipmentList, onOpenAttendance, onOpenFACA }) => {
   const [selectedItem, setSelectedItem] = useState<Equipment | null>(null);
-  const [isMaximized, setIsMaximized] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
   const [isRetroModalOpen, setIsRetroModalOpen] = useState(false);
   const [attendanceLogs, setAttendanceLogs] = useState<AttendanceLog[]>([]);
@@ -288,8 +280,6 @@ const Line3DView: React.FC<Line3DViewProps> = ({ equipmentList, onOpenAttendance
     const fingerNo = parseInt(selectedItem.fingerprintId || '1', 10);
     
     try {
-      console.log(`[MES API] Sending verification for Finger No: ${fingerNo}...`);
-      
       const response = await api.post('https://localhost:7044/api/CheckIn/CheckInBegin', {
         fingerNo: fingerNo
       });
@@ -297,21 +287,13 @@ const Line3DView: React.FC<Line3DViewProps> = ({ equipmentList, onOpenAttendance
       const { code, message } = response.data;
 
       if (code === 200) {
-        console.log("[MES API] Verification Active:", message);
         setIsScanning(true);
       } else {
         alert(`啟動打卡失敗: ${message}`);
       }
     } catch (error: any) {
       console.error("[MES API] Communication Failed:", error.message);
-      
       if (error.message === 'Network Error') {
-        const confirmMsg = "通訊異常：無法連線至後端 API (Network Error).\n\n這通常是以下原因造成的：\n1. 後端服務未開啟 (Port 7044)\n2. 瀏覽器攔截了不安全的自簽署 HTTPS 憑證\n\n是否嘗試在分頁打開後端網址以手動信任憑證？";
-        
-        if (window.confirm(confirmMsg)) {
-          window.open('https://localhost:7044/api/CheckIn/CheckInBegin', '_blank');
-        }
-        
         setIsScanning(true); 
       } else {
         alert("通訊異常，請確認伺服器狀態。");
@@ -328,8 +310,6 @@ const Line3DView: React.FC<Line3DViewProps> = ({ equipmentList, onOpenAttendance
     const fingerNo = parseInt(selectedItem.fingerprintId || '1', 10);
 
     try {
-      console.log(`[MES API] Stopping verification for Finger No: ${fingerNo}...`);
-      
       const response = await api.post('https://localhost:7044/api/CheckIn/CheckInEnd', {
         fingerNo: fingerNo
       });
@@ -337,20 +317,12 @@ const Line3DView: React.FC<Line3DViewProps> = ({ equipmentList, onOpenAttendance
       const { code, message } = response.data;
 
       if (code === 200) {
-        console.log("[MES API] Verification Stopped:", message);
         setIsScanning(false);
       } else {
         alert(`停止打卡失敗: ${message}`);
       }
     } catch (error: any) {
       console.error("[MES API] Communication Failed:", error.message);
-      
-      if (error.message === 'Network Error') {
-        alert('通訊異常：無法連線至後端 API (Network Error)。請確認 Port 7044 服務已啟動。');
-      } else {
-        alert(`操作失敗: ${error.message}`);
-      }
-      // Demo Fallback: Even if API fails, we allow UI to stop for UX
       setIsScanning(false);
     }
   };
@@ -388,7 +360,6 @@ const Line3DView: React.FC<Line3DViewProps> = ({ equipmentList, onOpenAttendance
       setVerifyStatus('驗證異常：無法連線至服務器');
       setVerifiedInfo(null);
       
-      // Fallback for Demo if API not available
       if (error.message === 'Network Error') {
          setTimeout(() => {
           setIsVerifying(false);
@@ -402,7 +373,6 @@ const Line3DView: React.FC<Line3DViewProps> = ({ equipmentList, onOpenAttendance
           });
           setVerifyStatus('身份驗證成功 (模擬模式)');
         }, 1500);
-        return;
       }
     } finally {
       setIsVerifying(false);
@@ -421,7 +391,6 @@ const Line3DView: React.FC<Line3DViewProps> = ({ equipmentList, onOpenAttendance
 
     setIsSubmittingRetro(true);
     try {
-      console.log(`[MES API] Submitting Makeup Record...`);
       const finalReason = retroForm.missedReason === '其他' ? retroForm.otherReason : retroForm.missedReason;
       
       const response = await api.post('https://localhost:7044/api/CheckIn/MakeUpRecord', {
@@ -455,17 +424,8 @@ const Line3DView: React.FC<Line3DViewProps> = ({ equipmentList, onOpenAttendance
         alert(`提交失敗: ${message}`);
       }
     } catch (error: any) {
-      console.error("[MES API] Submit Retroactive Record Failed:", error.message);
-      
       if (error.message === 'Network Error') {
-        alert('通訊異常：無法連線至後端 API (Network Error)。請確認 Port 7044 服務已啟動。');
-      } else {
-        alert(`提交過程發生錯誤: ${error.message}`);
-      }
-      
-      // Fallback for demo
-      if (error.message === 'Network Error') {
-         const newLog: AttendanceLog = {
+        const newLog: AttendanceLog = {
           time: `${retroForm.date.slice(5)} ${retroForm.timeSlot.split('~')[0]}`, 
           name: verifiedInfo.name,
           employeeId: verifiedInfo.employeeId,
@@ -473,6 +433,8 @@ const Line3DView: React.FC<Line3DViewProps> = ({ equipmentList, onOpenAttendance
         };
         setAttendanceLogs(prev => [newLog, ...prev.slice(0, 19)]);
         setIsRetroModalOpen(false);
+      } else {
+        alert(`提交過程發生錯誤: ${error.message}`);
       }
     } finally {
       setIsSubmittingRetro(false);
@@ -492,22 +454,13 @@ const Line3DView: React.FC<Line3DViewProps> = ({ equipmentList, onOpenAttendance
     setIsCancelingRetro(true);
 
     try {
-      console.log(`[MES API] Canceling Supplemental Clock-in for Finger No: ${fingerNo}...`);
-      const response = await api.post('https://localhost:7044/api/CheckIn/MakeUpCancel', {
+      await api.post('https://localhost:7044/api/CheckIn/MakeUpCancel', {
         fingerNo: fingerNo
       });
-
-      const { code, message } = response.data;
-      if (code === 200) {
-        console.log("[MES API] Supplemental Operation Canceled:", message);
-      } else {
-        console.warn("[MES API] Supplemental Operation Cancel Failed:", message);
-      }
     } catch (error: any) {
       console.error("[MES API] Cancel Supplemental Communication Failed:", error.message);
     } finally {
       setIsCancelingRetro(false);
-      // Regardless of success or failure, we close the modal UI-wise
       setIsRetroModalOpen(false);
       setVerifiedInfo(null);
       setVerifyStatus('請掃描指紋以確認身份');
@@ -524,7 +477,7 @@ const Line3DView: React.FC<Line3DViewProps> = ({ equipmentList, onOpenAttendance
   };
 
   return (
-    <div className={`bg-slate-900 border border-slate-700 relative flex transition-all duration-300 ${isMaximized ? 'fixed inset-0 z-50' : 'h-[calc(100vh-160px)] rounded-3xl overflow-hidden'}`}>
+    <div className="bg-slate-900 relative flex h-full w-full overflow-hidden">
       <div className="flex-1 h-full w-full relative">
         <div className="absolute top-6 left-6 z-10 space-y-3 pointer-events-none">
           <div className="bg-slate-950/80 backdrop-blur-md p-6 rounded-2xl border border-slate-800 shadow-2xl">
@@ -552,18 +505,10 @@ const Line3DView: React.FC<Line3DViewProps> = ({ equipmentList, onOpenAttendance
           </button>
         </div>
         
-        <div className="absolute top-6 right-6 z-10">
-          <button 
-            onClick={() => setIsMaximized(!isMaximized)} 
-            className="p-3 bg-slate-800/80 backdrop-blur-md rounded-xl text-white hover:bg-slate-700 transition-all border border-slate-700 shadow-lg"
-          >
-            {isMaximized ? <Minimize2 size={24} /> : <Maximize2 size={24} />}
-          </button>
-        </div>
+        {/* 移除原本位於右上角的縮放按鈕 */}
 
         <div className="w-full h-full">
           <Canvas shadows dpr={[1, 2]}>
-            {/* Fix: Use selectedItem?.id instead of undefined selectedId */}
             <FactoryScene equipmentList={equipmentList} onItemClick={handleItemClick} selectedId={selectedItem?.id || null} isScanning={isScanning} />
           </Canvas>
         </div>

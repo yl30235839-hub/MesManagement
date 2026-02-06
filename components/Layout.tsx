@@ -25,6 +25,8 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, onNavigate, onLo
     { id: '3D_VIEW' as PageView, label: '產綫 3D 監控', icon: Box },
   ];
 
+  const is3DMode = currentPage === '3D_VIEW';
+
   return (
     <div className="flex h-screen bg-gray-100 overflow-hidden">
       {/* Sidebar */}
@@ -105,7 +107,7 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, onNavigate, onLo
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto p-6 bg-slate-50">
+        <main className={`flex-1 overflow-y-auto bg-slate-50 ${is3DMode ? 'p-0' : 'p-6'}`}>
           {children}
         </main>
       </div>
