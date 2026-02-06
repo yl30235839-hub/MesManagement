@@ -92,7 +92,7 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, onNavigate, onLo
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        <header className="h-16 bg-white shadow-sm flex items-center justify-between px-8 z-10 shrink-0">
+        <header className="h-16 bg-white shadow-sm flex items-center justify-between px-8 z-10">
           <h2 className="text-2xl font-bold text-slate-800">
             {currentPage === 'EQUIPMENT' ? '產綫管理' : (navItems.find(i => i.id === currentPage)?.label || 'Dashboard')}
           </h2>
@@ -105,7 +105,7 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, onNavigate, onLo
           </div>
         </header>
 
-        <main className={`flex-1 flex flex-col bg-slate-50 ${currentPage === '3D_VIEW' ? 'overflow-hidden' : 'overflow-y-auto p-6'}`}>
+        <main className="flex-1 overflow-y-auto p-6 bg-slate-50">
           {children}
         </main>
       </div>

@@ -6,6 +6,18 @@ export enum MachineStatus {
   Maintenance = 'MAINTENANCE'
 }
 
+export enum LineType {
+  NVIDIA = 'VKLine_NVIDIA',
+  APPLE = 'VKLine_APPLE'
+}
+
+export enum EquipmentType {
+  AssemblyEquipment = '組裝設備',
+  AGVCarEquipment = 'AGV小車',
+  CheckinEquipment = '打卡設備',
+  TestingEquipment = '檢測設備'
+}
+
 export interface Factory {
   id: string;
   name: string;
@@ -21,6 +33,7 @@ export interface ProductionLine {
   name: string;
   description?: string;
   category?: string;
+  lineType?: LineType;
   status: MachineStatus;
   outputPerHour: number;
   targetOutput: number;
@@ -30,7 +43,7 @@ export interface Equipment {
   id: string;
   lineId: string;
   name: string;
-  type: string;
+  type: EquipmentType;
   description?: string;
   status: MachineStatus;
   temperature: number;

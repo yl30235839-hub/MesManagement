@@ -1,10 +1,10 @@
-
 import React, { useState } from 'react';
 import { MOCK_LINES } from '../constants';
-import { MachineStatus, ProductionLine } from '../types';
+import { MachineStatus, ProductionLine, LineType } from '../types';
+import api from '../services/api';
 import { 
   PlayCircle, StopCircle, AlertTriangle, Settings, Plus, 
-  Monitor, X, Layers, Building2, Save, RotateCw, MapPin 
+  Monitor, X, Layers, Building2, Save, RotateCw, MapPin, Tag, CheckCircle2
 } from 'lucide-react';
 
 interface LineManagementProps {
@@ -14,11 +14,17 @@ interface LineManagementProps {
 const LineManagement: React.FC<LineManagementProps> = ({ onViewEquipment }) => {
   const [lines, setLines] = useState<ProductionLine[]>(MOCK_LINES);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [newLineData, setNewLineData] = useState({ name: '', description: '', category: 'Vulkan-A' });
+  const [newLineData, setNewLineData] = useState({ 
+    name: '', 
+    description: '', 
+    category: 'Vulkan-A',
+    lineType: LineType.NVIDIA 
+  });
   
   // Factory Info State
   const [factoryInfo, setFactoryInfo] = useState({ code: 'GL', floor: '3F' });
   const [isSavingFactory, setIsSavingFactory] = useState(false);
+  const [isCreatingLine, setIsCreatingLine] = useState(false);
 
   const getStatusColor = (status: MachineStatus) => {
     switch (status) {
@@ -29,34 +35,84 @@ const LineManagement: React.FC<LineManagementProps> = ({ onViewEquipment }) => {
     }
   };
 
-  const handleSaveFactory = () => {
+  const handleSaveFactory = async () => {
     setIsSavingFactory(true);
-    setTimeout(() => {
+    try {
+      // 調用指定的 API 地址，傳入 site (code) 與 floor
+      const response = await api.post('https://localhost:7044/api/Factory/FactoryMaintenance', {
+        site: factoryInfo.code,
+        floor: factoryInfo.floor
+      });
+
+      if (response.data.code === 200) {
+        alert(response.data.message || '工廠基礎信息已成功保存並更新。');
+      } else {
+        alert(`保存失敗: ${response.data.message}`);
+      }
+    } catch (error: any) {
+      console.error('Save Factory Error:', error);
+      if (error.message === 'Network Error') {
+        alert('通訊異常：無法連線至 https://localhost:7044。請確保後端服務已啟動並信任 SSL 憑證。');
+      } else {
+        alert(`保存過程發生錯誤: ${error.message}`);
+      }
+    } finally {
       setIsSavingFactory(false);
-      alert('工廠基礎信息已成功保存並更新。');
-    }, 800);
+    }
   };
 
-  const handleAddLine = () => {
+  const handleAddLine = async () => {
     if (!newLineData.name.trim()) return;
-    const newLine: ProductionLine = {
-      id: `L${Math.floor(Math.random() * 10000)}`,
-      factoryId: 'F1',
-      name: newLineData.name,
-      description: newLineData.description,
-      category: newLineData.category,
-      status: MachineStatus.Stopped,
-      outputPerHour: 0,
-      targetOutput: 1000,
-    };
-    setLines([...lines, newLine]);
-    setIsModalOpen(false);
-    setNewLineData({ name: '', description: '', category: 'Vulkan-A' });
+    
+    setIsCreatingLine(true);
+    try {
+      // 調用指定的 API 地址進行產綫創建
+      const response = await api.post('https://localhost:7044/api/Factory/CreateLine', {
+        lineType: newLineData.lineType,
+        lineName: newLineData.name,
+        description: newLineData.description
+      });
+
+      // 根據最新的響應結構進行處理
+      if (response.data.code === 200) {
+        const sysName = response.data.data?.linesysname || `L${Math.floor(Math.random() * 10000)}`;
+        
+        // API 成功後，更新本地狀態顯示新產綫，使用返回的 linesysname 作為 ID
+        const newLine: ProductionLine = {
+          id: sysName,
+          factoryId: 'F1',
+          name: newLineData.name,
+          description: newLineData.description,
+          category: newLineData.category,
+          lineType: newLineData.lineType,
+          status: MachineStatus.Stopped,
+          outputPerHour: 0,
+          targetOutput: 1000,
+        };
+
+        setLines([...lines, newLine]);
+        setIsModalOpen(false);
+        setNewLineData({ name: '', description: '', category: 'Vulkan-A', lineType: LineType.NVIDIA });
+        
+        alert(`${response.data.message || '產綫已成功創建'}\n系統分配名稱: ${sysName}`);
+      } else {
+        alert(`創建失敗: ${response.data.message}`);
+      }
+    } catch (error: any) {
+      console.error('Create Line Error:', error);
+      if (error.message === 'Network Error') {
+        alert('通訊異常：無法連線至 https://localhost:7044/api/Factory/CreateLine。請檢查後端服務是否運行正常。');
+      } else {
+        alert(`創建過程發生錯誤: ${error.message}`);
+      }
+    } finally {
+      setIsCreatingLine(false);
+    }
   };
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
-      {/* Factory Information Section (New) */}
+      {/* Factory Information Section */}
       <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
         <div className="flex items-center mb-6 border-b border-slate-100 pb-3">
           <Building2 size={20} className="text-blue-600 mr-2" />
@@ -131,8 +187,8 @@ const LineManagement: React.FC<LineManagementProps> = ({ onViewEquipment }) => {
                 <div>
                   <h4 className="text-xl font-bold text-slate-800">{line.name}</h4>
                   <div className="flex items-center space-x-2 mt-1">
-                    <span className="text-xs font-mono text-slate-400">ID: {line.id}</span>
-                    <span className="text-xs font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded">生產中</span>
+                    <span className="text-xs font-mono text-slate-400">SYS_NAME: {line.id}</span>
+                    <span className="text-xs font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded">{line.lineType || 'Standard'}</span>
                   </div>
                 </div>
               </div>
@@ -178,16 +234,62 @@ const LineManagement: React.FC<LineManagementProps> = ({ onViewEquipment }) => {
             <div className="p-6 space-y-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">産綫名稱 *</label>
-                <input type="text" value={newLineData.name} onChange={(e) => setNewLineData({...newLineData, name: e.target.value})} className="w-full px-4 py-2 border border-slate-300 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" placeholder="例如: Assembly Line B" />
+                <input 
+                  type="text" 
+                  value={newLineData.name} 
+                  onChange={(e) => setNewLineData({...newLineData, name: e.target.value})} 
+                  className="w-full px-4 py-2 border border-slate-300 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" 
+                  placeholder="例如: Assembly Line B" 
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1 flex items-center">
+                  <Tag size={14} className="mr-1.5 text-blue-500" /> 綫體類別 *
+                </label>
+                <select 
+                  value={newLineData.lineType} 
+                  onChange={(e) => setNewLineData({...newLineData, lineType: e.target.value as LineType})}
+                  className="w-full px-4 py-2 border border-slate-300 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                >
+                  <option value={LineType.NVIDIA}>VKLine_NVIDIA</option>
+                  <option value={LineType.APPLE}>VKLine_APPLE</option>
+                </select>
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">描述</label>
-                <textarea value={newLineData.description} onChange={(e) => setNewLineData({...newLineData, description: e.target.value})} className="w-full px-4 py-2 border border-slate-300 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" placeholder="產線功能說明..." />
+                <textarea 
+                  value={newLineData.description} 
+                  onChange={(e) => setNewLineData({...newLineData, description: e.target.value})} 
+                  className="w-full px-4 py-2 border border-slate-300 rounded-xl outline-none focus:ring-2 focus:ring-blue-500" 
+                  placeholder="產線功能說明..." 
+                />
               </div>
             </div>
             <div className="px-6 py-4 bg-slate-50 border-t flex justify-end space-x-3">
-              <button onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-slate-500 font-medium hover:text-slate-700 transition-colors">取消</button>
-              <button onClick={handleAddLine} className="px-6 py-2 bg-blue-600 text-white rounded-lg font-bold shadow-md shadow-blue-100 hover:bg-blue-700 transition-all active:scale-95">創建產綫</button>
+              <button 
+                onClick={() => setIsModalOpen(false)} 
+                disabled={isCreatingLine}
+                className="px-4 py-2 text-slate-500 font-medium hover:text-slate-700 transition-colors"
+              >
+                取消
+              </button>
+              <button 
+                onClick={handleAddLine} 
+                disabled={isCreatingLine}
+                className="px-6 py-2 bg-blue-600 text-white rounded-xl font-bold shadow-lg shadow-blue-100 hover:bg-blue-700 transition-all active:scale-95 flex items-center disabled:opacity-50"
+              >
+                {isCreatingLine ? (
+                  <>
+                    <RotateCw size={16} className="animate-spin mr-2" />
+                    正在創建...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 size={16} className="mr-2" />
+                    創建產綫
+                  </>
+                )}
+              </button>
             </div>
           </div>
         </div>

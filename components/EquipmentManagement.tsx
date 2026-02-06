@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { MachineStatus, Equipment } from '../types';
+import { MachineStatus, Equipment, EquipmentType } from '../types';
 import { 
   Thermometer, Activity, Wrench, Clock, Settings, Filter, 
   Database, Table as TableIcon, Plus, Trash2, Cpu, 
   Search, Key, List, X, GripVertical, Building, MapPin, Hash,
-  Save, RotateCw, Network, ClipboardList, Layers, Monitor, Info
+  Save, RotateCw, Network, ClipboardList, Layers, Monitor, Info, Edit3
 } from 'lucide-react';
 
 interface EquipmentManagementProps {
@@ -34,7 +34,7 @@ const EquipmentManagement: React.FC<EquipmentManagementProps> = ({ lineId, equip
   // Modal State for Adding Equipment
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [newEquipData, setNewEquipData] = useState({
-    type: '組裝設備',
+    type: EquipmentType.AssemblyEquipment,
     name: '',
     description: '',
     factoryArea: '',
@@ -55,13 +55,9 @@ const EquipmentManagement: React.FC<EquipmentManagementProps> = ({ lineId, equip
   };
 
   const handleAddEquipment = () => {
-    if (newEquipData.type === '打卡設備') {
-      if (!newEquipData.name.trim() || !newEquipData.factoryArea.trim() || !newEquipData.floor.trim() || !newEquipData.sn.trim()) {
-        alert("請填寫所有打卡設備必要參數");
-        return;
-      }
-    } else {
-      if (!newEquipData.name.trim()) return;
+    if (!newEquipData.name.trim()) {
+      alert("請輸入設備名稱");
+      return;
     }
 
     const newId = `E${Math.floor(Math.random() * 10000)}`;
@@ -71,20 +67,20 @@ const EquipmentManagement: React.FC<EquipmentManagementProps> = ({ lineId, equip
       lineId: lineId || 'L1',
       name: newEquipData.name,
       type: newEquipData.type,
-      description: newEquipData.description || (newEquipData.type === '打卡設備' ? '專用考勤終端' : ''),
+      description: newEquipData.description,
       status: MachineStatus.Stopped,
       temperature: 20,
       vibration: 0,
       lastMaintenance: new Date().toISOString().split('T')[0],
       factoryArea: newEquipData.factoryArea,
       floor: newEquipData.floor,
-      sn: newEquipData.sn,
+      sn: newEquipData.sn || newId,
       fingerprintId: '1'
     };
     
     onAddEquipment(newEquip);
     setIsAddModalOpen(false);
-    setNewEquipData({ type: '組裝設備', name: '', description: '', factoryArea: '', floor: '', sn: '' });
+    setNewEquipData({ type: EquipmentType.AssemblyEquipment, name: '', description: '', factoryArea: '', floor: '', sn: '' });
   };
 
   return (
@@ -104,7 +100,7 @@ const EquipmentManagement: React.FC<EquipmentManagementProps> = ({ lineId, equip
       </div>
 
       <div className="animate-in fade-in duration-300 space-y-8">
-        {/* Production Line Maintenance Section (New) */}
+        {/* Production Line Maintenance Section */}
         {activeTab === 'STATUS' && (
           <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
             <div className="px-6 py-4 border-b border-slate-100 bg-slate-50 flex items-center justify-between">
@@ -313,78 +309,41 @@ const EquipmentManagement: React.FC<EquipmentManagementProps> = ({ lineId, equip
                 <label className="block text-sm font-medium text-slate-700 mb-1">設備類型 *</label>
                 <select
                   value={newEquipData.type}
-                  onChange={(e) => setNewEquipData({...newEquipData, type: e.target.value})}
+                  onChange={(e) => setNewEquipData({...newEquipData, type: e.target.value as EquipmentType})}
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white outline-none focus:ring-2 focus:ring-blue-500"
                 >
-                  <option value="組裝設備">組裝設備</option>
-                  <option value="AGV小車">AGV小車</option>
-                  <option value="打卡設備">打卡設備</option>
+                  <option value={EquipmentType.AssemblyEquipment}>{EquipmentType.AssemblyEquipment}</option>
+                  <option value={EquipmentType.TestingEquipment}>{EquipmentType.TestingEquipment}</option>
+                  <option value={EquipmentType.AGVCarEquipment}>{EquipmentType.AGVCarEquipment}</option>
+                  <option value={EquipmentType.CheckinEquipment}>{EquipmentType.CheckinEquipment}</option>
                 </select>
               </div>
 
-              {newEquipData.type === '打卡設備' ? (
-                <div className="space-y-4 animate-in slide-in-from-top-2">
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1 flex items-center">
-                      <Building size={14} className="mr-1.5 text-blue-500" /> 廠區 *
-                    </label>
-                    <input
-                      type="text"
-                      value={newEquipData.factoryArea}
-                      onChange={(e) => setNewEquipData({...newEquipData, factoryArea: e.target.value})}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="例如: 台北總廠"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1 flex items-center">
-                      <MapPin size={14} className="mr-1.5 text-blue-500" /> 設備樓層 *
-                    </label>
-                    <input
-                      type="text"
-                      value={newEquipData.floor}
-                      onChange={(e) => setNewEquipData({...newEquipData, floor: e.target.value})}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="例如: 3F-A區"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">打卡機名稱 *</label>
-                    <input
-                      type="text"
-                      value={newEquipData.name}
-                      onChange={(e) => setNewEquipData({...newEquipData, name: e.target.value})}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="例如: 正門打卡機 01"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1 flex items-center">
-                      <Hash size={14} className="mr-1.5 text-blue-500" /> 設備 SN *
-                    </label>
-                    <input
-                      type="text"
-                      value={newEquipData.sn}
-                      onChange={(e) => setNewEquipData({...newEquipData, sn: e.target.value})}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm font-mono outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="SN-XXXX-XXXX"
-                    />
-                  </div>
+              {/* 設備名稱與描述表單 */}
+              <div className="space-y-4 animate-in slide-in-from-top-2">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">設備名稱 *</label>
+                  <input
+                    type="text"
+                    value={newEquipData.name}
+                    onChange={(e) => setNewEquipData({...newEquipData, name: e.target.value})}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="請輸入設備自定義名稱"
+                  />
                 </div>
-              ) : (
-                <>
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">設備名稱 *</label>
-                    <input
-                      type="text"
-                      value={newEquipData.name}
-                      onChange={(e) => setNewEquipData({...newEquipData, name: e.target.value})}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="例如: Robotic Arm Alpha"
-                    />
-                  </div>
-                </>
-              )}
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1 flex items-center">
+                    <Edit3 size={14} className="mr-1.5 text-blue-500" /> 設備描述
+                  </label>
+                  <textarea
+                    value={newEquipData.description}
+                    onChange={(e) => setNewEquipData({...newEquipData, description: e.target.value})}
+                    rows={3}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 resize-none transition-all"
+                    placeholder="請輸入對該設備功能的說明性文字..."
+                  />
+                </div>
+              </div>
             </div>
 
             <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex justify-end space-x-3">

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Equipment, MachineStatus } from '../types';
+import { Equipment, MachineStatus, EquipmentType } from '../types';
 import { 
   ArrowLeft, Save, Activity, Settings, 
   Cpu, Zap, Database, Plug, Plus, Trash2, Server,
@@ -557,8 +557,8 @@ const DeviceSettings: React.FC<DeviceSettingsProps> = ({ device, onSave, onBack 
   if (!device) return <div className="p-8 text-center text-red-500">Device not found</div>;
 
   const renderBasicInfo = () => {
-    const isClockInDevice = device.type === '打卡設備';
-    const isAssemblyDevice = device.type === '組裝設備';
+    const isClockInDevice = device.type === EquipmentType.CheckinEquipment;
+    const isStandardMachine = device.type === EquipmentType.AssemblyEquipment || device.type === EquipmentType.TestingEquipment;
 
     return (
       <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
@@ -625,7 +625,7 @@ const DeviceSettings: React.FC<DeviceSettingsProps> = ({ device, onSave, onBack 
           </div>
         </div>
 
-        {isAssemblyDevice && (
+        {isStandardMachine && (
           <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
             <div className="bg-slate-50 px-6 py-4 border-b border-slate-200 flex items-center">
               <Network size={20} className="text-indigo-600 mr-2" />
@@ -696,9 +696,9 @@ const DeviceSettings: React.FC<DeviceSettingsProps> = ({ device, onSave, onBack 
          <div className="flex overflow-x-auto no-scrollbar">
             <button onClick={() => setActiveTab('BASIC')} className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${activeTab === 'BASIC' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>基礎信息與通訊</button>
             <button 
-              onClick={() => device.type === '組裝設備' && setActiveTab('MAPPING')} 
-              disabled={device.type !== '組裝設備'}
-              className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${activeTab === 'MAPPING' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700'} ${device.type !== '組裝設備' ? 'opacity-30 cursor-not-allowed' : ''}`}
+              onClick={() => (device.type === EquipmentType.AssemblyEquipment || device.type === EquipmentType.TestingEquipment) && setActiveTab('MAPPING')} 
+              disabled={device.type !== EquipmentType.AssemblyEquipment && device.type !== EquipmentType.TestingEquipment}
+              className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${activeTab === 'MAPPING' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700'} ${device.type !== EquipmentType.AssemblyEquipment && device.type !== EquipmentType.TestingEquipment ? 'opacity-30 cursor-not-allowed' : ''}`}
             >
               數據映射管理
             </button>

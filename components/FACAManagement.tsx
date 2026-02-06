@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   ArrowLeft, FileWarning, Search, Filter, 
   Clock, Database, User, Save, CheckCircle, 
   ChevronRight, AlertCircle, Calendar, 
   CloudUpload, Trash2, Edit3, Tag,
-  Activity, BarChart2
+  Activity, BarChart2, BookOpen, MousePointer2, Check,
+  Wrench, ClipboardList, Square, CheckSquare,
+  Package, PlusCircle, XCircle, Info, X, IdCard, Building2
 } from 'lucide-react';
 
 interface FACAPendingItem {
@@ -18,10 +20,40 @@ interface FACAPendingItem {
   status: 'AWAITING' | 'ANALYZING' | 'COMPLETED';
 }
 
+interface FACASolution {
+  id: string;
+  category: string;
+  description: string;
+  reason: string;
+  action: string;
+  alarmCodeRef: string;
+}
+
+interface PartRecord {
+  name: string;
+  model: string;
+  brand: string;
+  quantity: string;
+  changeTime: string;
+  description: string;
+  originalPart: {
+    name: string;
+    brand: string;
+    model: string;
+  };
+}
+
 const MOCK_PENDING: FACAPendingItem[] = [
   { id: 'F-20240320-001', date: '2024-03-20', startTime: '09:45:12', endTime: '10:15:30', machineName: 'Robotic Arm Beta', alarmCode: 'E-042', alarmContent: '伺服電機過載報警', status: 'AWAITING' },
   { id: 'F-20240320-002', date: '2024-03-20', startTime: '11:20:00', endTime: '11:25:00', machineName: 'CNC Milling Unit A', alarmCode: 'W-015', alarmContent: '切削液壓力低', status: 'AWAITING' },
   { id: 'F-20240319-015', date: '2024-03-19', startTime: '14:30:00', endTime: '15:45:00', machineName: 'Assembly Line A', alarmCode: 'S-001', alarmContent: '緊急停止觸發', status: 'ANALYZING' },
+];
+
+const MOCK_FACA_SOLUTIONS: FACASolution[] = [
+  { id: 'S-01', category: '電氣故障', alarmCodeRef: 'E-042', description: '電機電流瞬時峰值超過額定值', reason: '負載過重或抱閘未完全釋放', action: '檢查傳動機構潤滑，確認抱閘線圈電壓正常。' },
+  { id: 'S-02', category: '機械故障', alarmCodeRef: 'E-042', description: '伺服軸移動阻力過大', reason: '導軌異物干擾或同步帶老化', action: '清理導軌並重新噴塗潤滑油，必要時更換同步帶。' },
+  { id: 'S-03', category: '電器故障', alarmCodeRef: 'W-015', description: '壓力感應器數值偏低', reason: '泵體過濾網堵塞', action: '清洗切削液過濾網，檢查進液管路是否漏氣。' },
+  { id: 'S-04', category: '軟體錯誤', alarmCodeRef: 'S-001', description: '急停迴路信號不穩定', reason: '安全繼電器觸點接觸不良', action: '更換安全繼電器，或加固急停按鈕接線端子。' },
 ];
 
 const CLASSIFICATION_OPTIONS = {
@@ -31,6 +63,17 @@ const CLASSIFICATION_OPTIONS = {
   tags: ['緊急修復', '零件更換', '週期保養', '性能優化', '軟體補丁', '操作培訓']
 };
 
+const formatNow = () => {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, '0');
+  const d = String(now.getDate()).padStart(2, '0');
+  const h = String(now.getHours()).padStart(2, '0');
+  const mm = String(now.getMinutes()).padStart(2, '0');
+  const ss = String(now.getSeconds()).padStart(2, '0');
+  return `${y}/${m}/${d} ${h}:${mm}:${ss}`;
+};
+
 interface FACAManagementProps {
   onBack: () => void;
 }
@@ -38,28 +81,112 @@ interface FACAManagementProps {
 const FACAManagement: React.FC<FACAManagementProps> = ({ onBack }) => {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [appliedSolutionId, setAppliedSolutionId] = useState<string | null>(null);
+  const [isOtherFault, setIsOtherFault] = useState(false);
+  
+  // Modal State
+  const [isPartsModalOpen, setIsPartsModalOpen] = useState(false);
+  const [partsRecord, setPartsRecord] = useState<PartRecord | null>(null);
+  const [tempPartsRecord, setTempPartsRecord] = useState<PartRecord>({
+    name: '',
+    model: '',
+    brand: '',
+    quantity: '1',
+    changeTime: formatNow(),
+    description: '',
+    originalPart: {
+      name: '',
+      brand: '',
+      model: ''
+    }
+  });
+
   const selectedItem = MOCK_PENDING.find(i => i.id === selectedId);
 
   // Form State
   const [facaForm, setFacaForm] = useState({
-    handler: '張工程師',
+    handlerName: '張工程師',
+    handlerId: 'V1024',
+    handlerDept: '工程部',
     repairStart: '',
     repairEnd: '',
     cat1: '機械故障',
     cat2: '伺服系統',
     cat3: '電機過熱',
     tag1: '緊急修復',
-    tag2: '零件更換'
+    tag2: '零件更換',
+    faDetail: '',
+    caDetail: ''
   });
+
+  const filteredSolutions = useMemo(() => {
+    if (!selectedItem) return [];
+    return MOCK_FACA_SOLUTIONS.filter(s => s.alarmCodeRef === selectedItem.alarmCode || s.category.includes(facaForm.cat1));
+  }, [selectedItem, facaForm.cat1]);
 
   const handleSelectItem = (item: FACAPendingItem) => {
     setSelectedId(item.id);
-    // Initialize repair times based on fault times
+    setAppliedSolutionId(null);
+    setIsOtherFault(false);
+    setPartsRecord(null);
+    // 模擬自動解析分類
+    const mockCat1 = item.alarmCode.startsWith('E') ? '電器故障' : item.alarmCode.startsWith('W') ? '工藝問題' : '機械故障';
+    const mockCat2 = item.alarmCode.startsWith('E') ? '伺服系統' : '傳感器';
+    
     setFacaForm(prev => ({
       ...prev,
       repairStart: item.startTime,
-      repairEnd: item.endTime
+      repairEnd: item.endTime,
+      faDetail: '',
+      caDetail: '',
+      cat1: mockCat1,
+      cat2: mockCat2
     }));
+  };
+
+  const applySolution = (solution: FACASolution) => {
+    setAppliedSolutionId(solution.id);
+    setIsOtherFault(false);
+    setFacaForm(prev => ({
+      ...prev,
+      cat1: solution.category,
+      faDetail: solution.reason,
+      caDetail: solution.action
+    }));
+  };
+
+  const handleToggleOtherFault = () => {
+    const newValue = !isOtherFault;
+    setIsOtherFault(newValue);
+    if (newValue) {
+      setAppliedSolutionId(null); 
+    }
+  };
+
+  const openPartsModal = () => {
+    setTempPartsRecord({
+      name: partsRecord?.name || '',
+      model: partsRecord?.model || '',
+      brand: partsRecord?.brand || '',
+      quantity: partsRecord?.quantity || '1',
+      changeTime: partsRecord?.changeTime || formatNow(),
+      description: partsRecord?.description || '',
+      originalPart: {
+        name: partsRecord?.originalPart?.name || '',
+        brand: partsRecord?.originalPart?.brand || '',
+        model: partsRecord?.originalPart?.model || ''
+      }
+    });
+    setIsPartsModalOpen(true);
+  };
+
+  const confirmPartsRecord = () => {
+    setPartsRecord(tempPartsRecord);
+    setIsPartsModalOpen(false);
+  };
+
+  const cancelPartsRecord = () => {
+    setIsPartsModalOpen(false);
   };
 
   const handleSubmitFACA = (e: React.FormEvent) => {
@@ -73,8 +200,10 @@ const FACAManagement: React.FC<FACAManagementProps> = ({ onBack }) => {
     }, 1500);
   };
 
+  const isInputsDisabled = !isOtherFault;
+
   return (
-    <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
+    <div className="animate-in fade-in duration-300">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center space-x-4">
           <button onClick={onBack} className="p-2 rounded-full hover:bg-slate-200 text-slate-500 transition-colors">
@@ -152,38 +281,62 @@ const FACAManagement: React.FC<FACAManagementProps> = ({ onBack }) => {
                 </div>
               </div>
 
-              {/* Scrollable Content Part */}
-              <div className="flex-1 overflow-y-auto p-8 space-y-8 custom-scrollbar min-h-0">
-                {/* Section 1: Basic Fault Info */}
-                <div className="grid grid-cols-2 gap-8">
+              {/* Scrollable Content */}
+              <div className="flex-1 overflow-y-auto p-8 space-y-10 custom-scrollbar min-h-0">
+                {/* Section 1: Basic Fault Info & Handler Info (Enhanced) */}
+                <div className="grid grid-cols-2 gap-x-8 gap-y-6">
                   <div className="space-y-4">
                     <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">故障代碼</label>
                     <div className="p-3 bg-slate-50 rounded-lg border border-slate-100 font-mono text-blue-700 font-bold">
                       {selectedItem?.alarmCode}
                     </div>
                   </div>
+                  {/* 新增：設備名稱展示欄位 */}
                   <div className="space-y-4">
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">處理人信息</label>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">設備名稱</label>
+                    <div className="p-3 bg-slate-50 rounded-lg border border-slate-100 text-slate-700 font-bold">
+                      {selectedItem?.machineName}
+                    </div>
+                  </div>
+                  <div className="space-y-4">
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">處理人名稱</label>
                     <div className="relative">
                       <User size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                       <input 
                         type="text" 
-                        value={facaForm.handler}
-                        onChange={(e) => setFacaForm({...facaForm, handler: e.target.value})}
+                        value={facaForm.handlerName}
+                        onChange={(e) => setFacaForm({...facaForm, handlerName: e.target.value})}
                         className="w-full pl-10 pr-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm"
-                        placeholder="輸入處理人姓名/工號"
+                        placeholder="輸入處理人名稱"
                       />
                     </div>
                   </div>
-                </div>
-
-                <div className="space-y-4">
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">故障描述</label>
-                  <textarea 
-                    className="w-full p-4 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm bg-slate-50/50 min-h-[80px]"
-                    defaultValue={selectedItem?.alarmContent}
-                    readOnly
-                  ></textarea>
+                  <div className="space-y-4">
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">處理人工號</label>
+                    <div className="relative">
+                      <IdCard size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                      <input 
+                        type="text" 
+                        value={facaForm.handlerId}
+                        onChange={(e) => setFacaForm({...facaForm, handlerId: e.target.value})}
+                        className="w-full pl-10 pr-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm font-mono"
+                        placeholder="輸入處理人工號 (如: V1234)"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-4">
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider">處理人部門</label>
+                    <div className="relative">
+                      <Building2 size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                      <input 
+                        type="text" 
+                        value={facaForm.handlerDept}
+                        onChange={(e) => setFacaForm({...facaForm, handlerDept: e.target.value})}
+                        className="w-full pl-10 pr-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm"
+                        placeholder="輸入處理人所在部門"
+                      />
+                    </div>
+                  </div>
                 </div>
 
                 {/* Section 2: Time Management */}
@@ -225,19 +378,32 @@ const FACAManagement: React.FC<FACAManagementProps> = ({ onBack }) => {
 
                 {/* Section 3: Classification */}
                 <div className="space-y-6">
-                  <h4 className="text-sm font-bold text-slate-800 flex items-center">
-                    <Tag size={18} className="mr-2 text-blue-600" /> 異常分類體系
-                  </h4>
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-sm font-bold text-slate-800 flex items-center">
+                      <Tag size={18} className="mr-2 text-blue-600" /> 異常分類體系
+                    </h4>
+                    <span className="text-[10px] text-amber-500 font-bold bg-amber-50 px-2 py-0.5 rounded flex items-center">
+                      <Info size={10} className="mr-1" /> 自動解析模式
+                    </span>
+                  </div>
                   <div className="grid grid-cols-3 gap-6">
                     <div>
-                      <label className="block text-[10px] font-bold text-slate-400 mb-2 uppercase">一級分類</label>
-                      <select value={facaForm.cat1} onChange={(e) => setFacaForm({...facaForm, cat1: e.target.value})} className="w-full p-3 border border-slate-300 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 bg-white text-sm">
+                      <label className="block text-[10px] font-bold text-slate-400 mb-2 uppercase">一級分類 (自動)</label>
+                      <select 
+                        disabled 
+                        value={facaForm.cat1} 
+                        className="w-full p-3 border border-slate-200 rounded-xl outline-none bg-slate-100 text-slate-500 text-sm cursor-not-allowed"
+                      >
                         {CLASSIFICATION_OPTIONS.level1.map(opt => <option key={opt}>{opt}</option>)}
                       </select>
                     </div>
                     <div>
-                      <label className="block text-[10px] font-bold text-slate-400 mb-2 uppercase">二級分類</label>
-                      <select value={facaForm.cat2} onChange={(e) => setFacaForm({...facaForm, cat2: e.target.value})} className="w-full p-3 border border-slate-300 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 bg-white text-sm">
+                      <label className="block text-[10px] font-bold text-slate-400 mb-2 uppercase">二級分類 (自動)</label>
+                      <select 
+                        disabled 
+                        value={facaForm.cat2} 
+                        className="w-full p-3 border border-slate-200 rounded-xl outline-none bg-slate-100 text-slate-500 text-sm cursor-not-allowed"
+                      >
                         {CLASSIFICATION_OPTIONS.level2.map(opt => <option key={opt}>{opt}</option>)}
                       </select>
                     </div>
@@ -248,7 +414,8 @@ const FACAManagement: React.FC<FACAManagementProps> = ({ onBack }) => {
                       </select>
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-6">
+
+                  <div className="grid grid-cols-2 gap-6 pt-2">
                     <div className="p-4 bg-slate-50 rounded-xl border border-slate-100">
                       <label className="block text-[10px] font-bold text-slate-400 mb-3 uppercase flex items-center">
                         <BarChart2 size={12} className="mr-1" /> 分類標籤 1
@@ -285,6 +452,121 @@ const FACAManagement: React.FC<FACAManagementProps> = ({ onBack }) => {
                     </div>
                   </div>
                 </div>
+
+                {/* --- EXPERT KNOWLEDGE LIST --- */}
+                <div className="space-y-4 pt-4 border-t border-slate-100">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-sm font-bold text-slate-800 flex items-center">
+                      <BookOpen size={18} className="mr-2 text-indigo-600" /> 專家知識庫 / 標準 FACA 方案
+                    </h4>
+                    <span className="text-[10px] text-slate-400 italic">基於報警代碼 {selectedItem?.alarmCode} 自動檢索</span>
+                  </div>
+                  
+                  <div className="border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+                    <table className="w-full text-left border-collapse bg-white">
+                      <thead>
+                        <tr className="bg-slate-50 text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-200">
+                          <th className="px-4 py-3">故障分類</th>
+                          <th className="px-4 py-3">現象描述</th>
+                          <th className="px-4 py-3">原因分析</th>
+                          <th className="px-4 py-3">處理方法</th>
+                          <th className="px-4 py-3 text-right">引用</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {filteredSolutions.length > 0 ? (
+                          filteredSolutions.map((sol) => (
+                            <tr key={sol.id} className={`text-[11px] group transition-colors ${appliedSolutionId === sol.id ? 'bg-indigo-50/50' : 'hover:bg-slate-50'}`}>
+                              <td className="px-4 py-3">
+                                <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 font-bold border border-slate-200">
+                                  {sol.category}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3 text-slate-700 font-medium">{sol.description}</td>
+                              <td className="px-4 py-3 text-slate-500 italic">{sol.reason}</td>
+                              <td className="px-4 py-3 text-slate-600 leading-relaxed">{sol.action}</td>
+                              <td className="px-4 py-3 text-right">
+                                <button 
+                                  type="button"
+                                  onClick={() => applySolution(sol)}
+                                  className={`p-1.5 rounded-lg transition-all ${appliedSolutionId === sol.id ? 'bg-green-600 text-white' : 'bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white'}`}
+                                >
+                                  {appliedSolutionId === sol.id ? <Check size={14} /> : <MousePointer2 size={14} />}
+                                </button>
+                              </td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr>
+                            <td colSpan={5} className="px-4 py-8 text-center text-slate-400 text-xs">
+                              暫無符合此報警代碼的標準方案。
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* --- SPLIT: FA & CA ANALYSIS --- */}
+                <div className="space-y-6 pt-4">
+                  <div className="flex items-center justify-between">
+                    <label className="flex items-center space-x-2 cursor-pointer group">
+                      <div 
+                        onClick={handleToggleOtherFault}
+                        className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${isOtherFault ? 'bg-blue-600 border-blue-600 text-white shadow-sm' : 'bg-white border-slate-300 group-hover:border-blue-400'}`}
+                      >
+                        {isOtherFault ? <Check size={12} strokeWidth={4} /> : null}
+                      </div>
+                      <span className={`text-xs font-bold ${isOtherFault ? 'text-blue-600' : 'text-slate-500'}`}>其他故障 (開放自定義編輯)</span>
+                    </label>
+
+                    {/* 更換零件按鈕 - 修改為彈窗邏輯 */}
+                    <div className="flex items-center space-x-3">
+                      {partsRecord && (
+                        <span className="text-[10px] text-green-600 bg-green-50 px-2 py-1 rounded flex items-center font-bold">
+                          <Check size={10} className="mr-1" /> 已錄入零件: {partsRecord.name}
+                        </span>
+                      )}
+                      <button 
+                        type="button"
+                        onClick={openPartsModal}
+                        className={`flex items-center px-4 py-2 rounded-xl text-xs font-bold transition-all border shadow-sm ${partsRecord ? 'bg-orange-100 text-orange-700 border-orange-200' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}
+                      >
+                        <Package size={14} className="mr-2" />
+                        更換零件
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center">
+                      <Search size={14} className="mr-1.5 text-blue-500" /> FA 故障分析 (Failure Analysis)
+                      {isInputsDisabled && <span className="ml-2 text-[10px] text-amber-500 bg-amber-50 px-1.5 rounded flex items-center"><XCircle size={10} className="mr-1" /> 已鎖定</span>}
+                    </label>
+                    <textarea 
+                      disabled={isInputsDisabled}
+                      value={facaForm.faDetail}
+                      onChange={(e) => setFacaForm({...facaForm, faDetail: e.target.value})}
+                      className={`w-full p-4 border rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm min-h-[120px] shadow-inner transition-all ${isInputsDisabled ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed' : 'bg-white border-slate-300'}`}
+                      placeholder={isInputsDisabled ? "當前為鎖定狀態，如需編輯請勾選「其他故障」" : "請輸入詳細的失效分析內容..."}
+                    ></textarea>
+                  </div>
+
+                  <div className="space-y-4">
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center">
+                      <Wrench size={14} className="mr-1.5 text-green-500" /> CA 故障處理 (Corrective Action)
+                      {isInputsDisabled && <span className="ml-2 text-[10px] text-amber-500 bg-amber-50 px-1.5 rounded flex items-center"><XCircle size={10} className="mr-1" /> 已鎖定</span>}
+                    </label>
+                    <textarea 
+                      disabled={isInputsDisabled}
+                      value={facaForm.caDetail}
+                      onChange={(e) => setFacaForm({...facaForm, caDetail: e.target.value})}
+                      className={`w-full p-4 border rounded-xl focus:ring-2 focus:ring-green-500 outline-none text-sm min-h-[120px] shadow-inner transition-all ${isInputsDisabled ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed' : 'bg-white border-slate-300'}`}
+                      placeholder={isInputsDisabled ? "當前為鎖定狀態，如需編輯請勾選「其他故障」" : "請輸入採取的糾正措施、修復過程與預防建議..."}
+                    ></textarea>
+                  </div>
+                </div>
               </div>
             </form>
           ) : (
@@ -298,6 +580,138 @@ const FACAManagement: React.FC<FACAManagementProps> = ({ onBack }) => {
           )}
         </div>
       </div>
+
+      {/* 零件更換記錄窗口 */}
+      {isPartsModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="px-6 py-4 bg-orange-600 text-white flex justify-between items-center shrink-0">
+              <div className="flex items-center space-x-2">
+                <Package size={20} />
+                <h3 className="font-bold">零件更換記錄</h3>
+              </div>
+              <button onClick={cancelPartsRecord} className="text-white/60 hover:text-white transition-colors">
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto p-8 space-y-8 custom-scrollbar">
+              {/* 當前更換零件信息 */}
+              <div className="grid grid-cols-2 gap-6">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">品名</label>
+                  <input 
+                    type="text" 
+                    value={tempPartsRecord.name}
+                    onChange={(e) => setTempPartsRecord({...tempPartsRecord, name: e.target.value})}
+                    className="w-full px-4 py-2.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 outline-none"
+                    placeholder="如: 伺服電機"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">型號</label>
+                  <input 
+                    type="text" 
+                    value={tempPartsRecord.model}
+                    onChange={(e) => setTempPartsRecord({...tempPartsRecord, model: e.target.value})}
+                    className="w-full px-4 py-2.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 outline-none font-mono"
+                    placeholder="如: MSMD042G1V"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">品牌</label>
+                  <input 
+                    type="text" 
+                    value={tempPartsRecord.brand}
+                    onChange={(e) => setTempPartsRecord({...tempPartsRecord, brand: e.target.value})}
+                    className="w-full px-4 py-2.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 outline-none"
+                    placeholder="如: Panasonic"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">數量</label>
+                  <input 
+                    type="text" 
+                    value={tempPartsRecord.quantity}
+                    onChange={(e) => setTempPartsRecord({...tempPartsRecord, quantity: e.target.value})}
+                    className="w-full px-4 py-2.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 outline-none"
+                    placeholder="1"
+                  />
+                </div>
+                <div className="col-span-2 space-y-1">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">更換時間 (XXXX/XX/XX XX:XX:XX)</label>
+                  <input 
+                    type="text" 
+                    value={tempPartsRecord.changeTime}
+                    onChange={(e) => setTempPartsRecord({...tempPartsRecord, changeTime: e.target.value})}
+                    className="w-full px-4 py-2.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 outline-none font-mono"
+                  />
+                </div>
+                <div className="col-span-2 space-y-1">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">描述</label>
+                  <textarea 
+                    value={tempPartsRecord.description}
+                    onChange={(e) => setTempPartsRecord({...tempPartsRecord, description: e.target.value})}
+                    className="w-full px-4 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 outline-none min-h-[60px] resize-none"
+                    placeholder="請描述零件更換的原因或狀況..."
+                  />
+                </div>
+              </div>
+
+              {/* 原物料模塊 */}
+              <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200 space-y-4">
+                <h4 className="text-xs font-bold text-slate-600 flex items-center">
+                  <Trash2 size={14} className="mr-2" /> 原物料模塊 (更換前零件)
+                </h4>
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase">品名</label>
+                    <input 
+                      type="text" 
+                      value={tempPartsRecord.originalPart.name}
+                      onChange={(e) => setTempPartsRecord({...tempPartsRecord, originalPart: {...tempPartsRecord.originalPart, name: e.target.value}})}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-orange-500 outline-none bg-white"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase">品牌</label>
+                    <input 
+                      type="text" 
+                      value={tempPartsRecord.originalPart.brand}
+                      onChange={(e) => setTempPartsRecord({...tempPartsRecord, originalPart: {...tempPartsRecord.originalPart, brand: e.target.value}})}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-orange-500 outline-none bg-white"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase">型號</label>
+                    <input 
+                      type="text" 
+                      value={tempPartsRecord.originalPart.model}
+                      onChange={(e) => setTempPartsRecord({...tempPartsRecord, originalPart: {...tempPartsRecord.originalPart, model: e.target.value}})}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-orange-500 outline-none font-mono bg-white"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="px-8 py-6 bg-slate-50 border-t border-slate-100 flex justify-end space-x-4 shrink-0">
+              <button 
+                onClick={cancelPartsRecord}
+                className="px-6 py-2.5 text-sm font-bold text-slate-500 hover:text-slate-700 transition-colors"
+              >
+                取消
+              </button>
+              <button 
+                onClick={confirmPartsRecord}
+                className="flex items-center px-8 py-2.5 bg-orange-600 text-white rounded-xl font-bold text-sm shadow-lg shadow-orange-100 hover:bg-orange-700 transition-all active:scale-95"
+              >
+                <Check size={18} className="mr-2" /> 確認
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

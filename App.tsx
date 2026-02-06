@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import Layout from './components/Layout';
 import LoginPage from './components/LoginPage';
@@ -64,7 +63,9 @@ const App: React.FC = () => {
     setSelectedDeviceId(null);
   }
 
-  const handleGoToAttendance = () => {
+  const handleGoToAttendance = (lineId?: string, deviceId?: string) => {
+    if (lineId) setSelectedLineId(lineId);
+    if (deviceId) setSelectedDeviceId(deviceId);
     setCurrentPage('ATTENDANCE_MAINTENANCE');
   };
 
@@ -115,7 +116,14 @@ const App: React.FC = () => {
           />
         );
       case 'ATTENDANCE_MAINTENANCE':
-        return <AttendanceMaintenance onBack={() => setCurrentPage('3D_VIEW')} onGoToRegister={handleGoToRegister} />;
+        return (
+          <AttendanceMaintenance 
+            lineId={selectedLineId}
+            deviceId={selectedDeviceId}
+            onBack={() => setCurrentPage('3D_VIEW')} 
+            onGoToRegister={handleGoToRegister} 
+          />
+        );
       case 'FACA_MANAGEMENT':
         return <FACAManagement onBack={() => setCurrentPage('3D_VIEW')} />;
       case 'REGISTER':
