@@ -1,12 +1,14 @@
 import React, { useState, useRef, useMemo } from 'react';
 import api from '../services/api';
+import RegisterPage from './RegisterPage';
 import { 
   ArrowLeft, Search, Filter, Download, UserCheck, 
   UserX, Clock, Edit3, MoreVertical, ChevronLeft, 
   ChevronRight, FileText, UserPlus, 
   Trash2, User, Users as UsersIcon, Calendar as CalendarIcon,
   X, CheckCircle, AlertCircle, RefreshCw, Star, Zap, ShieldCheck,
-  FileUp, FileSpreadsheet, BarChart, Calendar, Info, Eye, XCircle
+  FileUp, FileSpreadsheet, BarChart, Calendar, Info, Eye, XCircle,
+  Fingerprint
 } from 'lucide-react';
 
 interface AttendanceRecord {
@@ -26,6 +28,8 @@ interface Personnel {
   department: string;
   position: string;
   techLevel: string;
+  hasFingerprint1: boolean;
+  hasFingerprint2: boolean;
   extraPermissions: {
     keyPersonnel: boolean;
     mobilePersonnel: boolean;
@@ -60,6 +64,8 @@ const INITIAL_PERSONNEL: Personnel[] = [
     department: '機構', 
     position: '工程師', 
     techLevel: '3級(Level A)', 
+    hasFingerprint1: true,
+    hasFingerprint2: true,
     extraPermissions: { keyPersonnel: true, mobilePersonnel: false } 
   },
   { 
@@ -69,6 +75,8 @@ const INITIAL_PERSONNEL: Personnel[] = [
     department: '電控', 
     position: '高級工程師', 
     techLevel: '開發', 
+    hasFingerprint1: true,
+    hasFingerprint2: false,
     extraPermissions: { keyPersonnel: true, mobilePersonnel: true } 
   },
   { 
@@ -78,6 +86,8 @@ const INITIAL_PERSONNEL: Personnel[] = [
     department: '視覺', 
     position: '技術員', 
     techLevel: '2級(Level B)', 
+    hasFingerprint1: false,
+    hasFingerprint2: false,
     extraPermissions: { keyPersonnel: false, mobilePersonnel: true } 
   },
   { 
@@ -87,6 +97,8 @@ const INITIAL_PERSONNEL: Personnel[] = [
     department: '導入', 
     position: '實習生', 
     techLevel: '1級(Level C)', 
+    hasFingerprint1: true,
+    hasFingerprint2: true,
     extraPermissions: { keyPersonnel: false, mobilePersonnel: false } 
   },
 ];
@@ -116,6 +128,10 @@ const AttendanceMaintenance: React.FC<AttendanceMaintenanceProps> = ({ lineId, d
   const [selectedPeriod, setSelectedPeriod] = useState<string | null>(null);
   const [checkedInList, setCheckedInList] = useState<DetailPerson[]>([]);
   const [notCheckedInList, setNotCheckedInList] = useState<DetailPerson[]>([]);
+
+  // Edit User Modal State
+  const [editingPerson, setEditingPerson] = useState<Personnel | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   // Generate Time Periods based on Shift
   const statisticsData = useMemo(() => {
@@ -217,6 +233,8 @@ const AttendanceMaintenance: React.FC<AttendanceMaintenanceProps> = ({ lineId, d
             department: item.Vender,
             position: item.UserJobName,
             techLevel: item.UserLevel,
+            hasFingerprint1: item.Finger1Status === '已錄入' || item.Finger1Status === true,
+            hasFingerprint2: item.Finger2Status === '已錄入' || item.Finger2Status === true,
             extraPermissions: {
               keyPersonnel: item.KeyMan === '是' || item.KeyMan === true,
               mobilePersonnel: item.ActiveMan === '是' || item.ActiveMan === true
@@ -260,6 +278,8 @@ const AttendanceMaintenance: React.FC<AttendanceMaintenanceProps> = ({ lineId, d
           department: '視覺', 
           position: '技術專家', 
           techLevel: '開發', 
+          hasFingerprint1: true,
+          hasFingerprint2: false,
           extraPermissions: { keyPersonnel: true, mobilePersonnel: false } 
         }
       ];
@@ -274,6 +294,32 @@ const AttendanceMaintenance: React.FC<AttendanceMaintenanceProps> = ({ lineId, d
     if (window.confirm('確定要刪除該人員信息嗎？相關指紋數據也將被同步移除。')) {
       setPersonnelList(prev => prev.filter(p => p.id !== id));
     }
+  };
+
+  const handleOpenEditModal = (person: Personnel) => {
+    setEditingPerson(person);
+    setIsEditModalOpen(true);
+  };
+
+  const handleSaveEdit = (updatedData: any) => {
+    console.log('Saving personnel updates:', updatedData);
+    // In a real app, you would send this to the server
+    setPersonnelList(prev => prev.map(p => 
+      p.employeeId === updatedData.employeeId 
+        ? { 
+            ...p, 
+            name: updatedData.name, 
+            department: updatedData.department,
+            position: updatedData.position,
+            techLevel: updatedData.techLevel,
+            extraPermissions: {
+              keyPersonnel: updatedData.extraPermissions.keyPersonnel,
+              mobilePersonnel: updatedData.extraPermissions.mobilePersonnel
+            }
+          } 
+        : p
+    ));
+    alert('用戶信息更新成功！');
   };
 
   return (
@@ -316,37 +362,6 @@ const AttendanceMaintenance: React.FC<AttendanceMaintenanceProps> = ({ lineId, d
               <UserPlus size={16} className="mr-2" /> 新增人員
             </button>
           )}
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">今日應到</p>
-          <div className="flex items-end justify-between">
-            <h3 className="text-2xl font-bold text-slate-800">42 人</h3>
-            <UserCheck className="text-blue-500" size={20} />
-          </div>
-        </div>
-        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">已到人數</p>
-          <div className="flex items-end justify-between">
-            <h3 className="text-2xl font-bold text-green-600">38 人</h3>
-            <span className="text-xs text-green-500 font-bold mb-1">90.4%</span>
-          </div>
-        </div>
-        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">異常打卡</p>
-          <div className="flex items-end justify-between">
-            <h3 className="text-2xl font-bold text-orange-500">3 人</h3>
-            <Clock className="text-orange-500" size={20} />
-          </div>
-        </div>
-        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">總人員數</p>
-          <div className="flex items-end justify-between">
-            <h3 className="text-2xl font-bold text-slate-800">{personnelList.length} 人</h3>
-            <UsersIcon className="text-slate-400" size={20} />
-          </div>
         </div>
       </div>
 
@@ -568,6 +583,8 @@ const AttendanceMaintenance: React.FC<AttendanceMaintenanceProps> = ({ lineId, d
                       <th className="px-6 py-4">部門/崗位</th>
                       <th className="px-6 py-4">工號</th>
                       <th className="px-6 py-4 text-center">技術等級</th>
+                      <th className="px-6 py-4 text-center">指紋1</th>
+                      <th className="px-6 py-4 text-center">指紋2</th>
                       <th className="px-6 py-4 text-center">關鍵人力</th>
                       <th className="px-6 py-4 text-center">機動人力</th>
                       <th className="px-6 py-4 text-right">管理操作</th>
@@ -595,6 +612,28 @@ const AttendanceMaintenance: React.FC<AttendanceMaintenanceProps> = ({ lineId, d
                           </span>
                         </td>
                         <td className="px-6 py-4 text-center">
+                          {person.hasFingerprint1 ? (
+                            <div className="flex items-center justify-center text-blue-600" title="已錄入">
+                              <Fingerprint size={18} />
+                            </div>
+                          ) : (
+                            <div className="text-slate-300 flex items-center justify-center" title="未錄入">
+                              <XCircle size={16} />
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 text-center">
+                          {person.hasFingerprint2 ? (
+                            <div className="flex items-center justify-center text-indigo-600" title="已錄入">
+                              <Fingerprint size={18} />
+                            </div>
+                          ) : (
+                            <div className="text-slate-300 flex items-center justify-center" title="未錄入">
+                              <XCircle size={16} />
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 text-center">
                           {person.extraPermissions.keyPersonnel ? (
                             <div className="flex items-center justify-center text-amber-500" title="是">
                               <Star size={18} fill="currentColor" />
@@ -618,7 +657,12 @@ const AttendanceMaintenance: React.FC<AttendanceMaintenanceProps> = ({ lineId, d
                         </td>
                         <td className="px-6 py-4 text-right">
                           <div className="flex justify-end space-x-2">
-                            <button className="p-2 text-slate-400 hover:text-blue-600 hover:bg-white rounded transition-all"><Edit3 size={16} /></button>
+                            <button 
+                              onClick={() => handleOpenEditModal(person)}
+                              className="p-2 text-slate-400 hover:text-blue-600 hover:bg-white rounded transition-all"
+                            >
+                              <Edit3 size={16} />
+                            </button>
                             <button 
                               onClick={() => handleDeletePersonnel(person.id)}
                               className="p-2 text-slate-400 hover:text-red-600 hover:bg-white rounded transition-all"
@@ -645,6 +689,24 @@ const AttendanceMaintenance: React.FC<AttendanceMaintenanceProps> = ({ lineId, d
           </>
         )}
       </div>
+
+      {/* User Edit Modal */}
+      {isEditModalOpen && editingPerson && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-md animate-in fade-in duration-300">
+          <div className="w-full max-w-4xl max-h-[90vh] overflow-y-auto custom-scrollbar rounded-2xl shadow-2xl animate-in zoom-in-95 duration-300">
+            <RegisterPage 
+              isModal={true}
+              isEdit={true}
+              initialData={editingPerson}
+              onBack={() => {
+                setIsEditModalOpen(false);
+                setEditingPerson(null);
+              }}
+              onSave={handleSaveEdit}
+            />
+          </div>
+        </div>
+      )}
 
       {/* Statistics Detail Modal */}
       {isDetailModalOpen && (

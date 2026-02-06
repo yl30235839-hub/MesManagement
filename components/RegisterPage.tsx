@@ -1,17 +1,27 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   User, IdCard, Building2, Briefcase, GraduationCap, 
   Lock, ArrowLeft, CheckCircle, 
   Fingerprint, Scan, ShieldCheck, Info, Eye, EyeOff,
-  UserCheck, Zap, Monitor, Settings, CheckSquare, Square
+  UserCheck, Zap, Monitor, Settings, CheckSquare, Square,
+  X, LockKeyhole
 } from 'lucide-react';
 
 interface RegisterPageProps {
   onBack: () => void;
+  initialData?: any;
+  isEdit?: boolean;
+  onSave?: (data: any) => void;
+  isModal?: boolean;
 }
 
-const RegisterPage: React.FC<RegisterPageProps> = ({ onBack }) => {
+const RegisterPage: React.FC<RegisterPageProps> = ({ 
+  onBack, 
+  initialData, 
+  isEdit = false, 
+  onSave,
+  isModal = false 
+}) => {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
@@ -30,21 +40,77 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onBack }) => {
     }
   });
 
-  // Fingerprint Registration State
+  // Fingerprint Registration State 1
   const [isRegisteringFinger, setIsRegisteringFinger] = useState(false);
   const [isFingerRegistered, setIsFingerRegistered] = useState(false);
   const [fingerprintImage, setFingerprintImage] = useState<string | null>(null);
   const [fingerprintStatus, setFingerprintStatus] = useState('等待登記...');
 
+  // Fingerprint Registration State 2
+  const [isRegisteringFinger2, setIsRegisteringFinger2] = useState(false);
+  const [isFingerRegistered2, setIsFingerRegistered2] = useState(false);
+  const [fingerprintImage2, setFingerprintImage2] = useState<string | null>(null);
+  const [fingerprintStatus2, setFingerprintStatus2] = useState('等待登記2...');
+
+  /**
+   * Enablement Logic Update:
+   * 1. If hasFingerprint1 is true (already registered), module 1 is DISABLED (enable = false).
+   * 2. If hasFingerprint1 is false (not registered), module 1 is ENABLED (enable = true).
+   */
+  const isFinger1Enabled = !isEdit || (initialData?.hasFingerprint1 === false);
+  const isFinger2Enabled = !isEdit || (initialData?.hasFingerprint2 === false);
+
+  // Initialize data if in edit mode
+  useEffect(() => {
+    if (isEdit && initialData) {
+      setFormData({
+        name: initialData.name || '',
+        employeeId: initialData.employeeId || '',
+        department: initialData.department || '',
+        position: initialData.position || '機構',
+        techLevel: initialData.techLevel || '1級(Level C)',
+        permission: initialData.permission || '操作員',
+        password: '••••••••', // Don't show actual password for security
+        extraPermissions: {
+          keyPersonnel: initialData.extraPermissions?.keyPersonnel || false,
+          mobilePersonnel: initialData.extraPermissions?.mobilePersonnel || false,
+          hostSoftware: initialData.extraPermissions?.hostSoftware || false,
+          equipmentOp: initialData.extraPermissions?.equipmentOp || false
+        }
+      });
+      
+      // Setup Initial Biometrics View
+      if (initialData.hasFingerprint1) {
+        setIsFingerRegistered(true);
+        setFingerprintStatus('指紋1已錄入 (模塊已鎖定)');
+        setFingerprintImage('https://images.unsplash.com/photo-1518133910546-b6c2fb7d79e3?auto=format&fit=crop&q=80&w=200&h=200');
+      } else {
+        setFingerprintStatus('待錄入指紋1...');
+      }
+
+      if (initialData.hasFingerprint2) {
+        setIsFingerRegistered2(true);
+        setFingerprintStatus2('指紋2已錄入 (模塊已鎖定)');
+        setFingerprintImage2('https://images.unsplash.com/photo-1518133910546-b6c2fb7d79e3?auto=format&fit=crop&q=80&w=200&h=200');
+      } else {
+        setFingerprintStatus2('待錄入指紋2...');
+      }
+    }
+  }, [isEdit, initialData]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    // Simulate registration
+    // Simulate save/registration
     setTimeout(() => {
       setLoading(false);
-      alert('註冊成功！請使用新賬號登入。');
+      if (isEdit && onSave) {
+        onSave(formData);
+      } else {
+        alert('註冊成功！請使用新賬號登入。');
+      }
       onBack();
-    }, 1500);
+    }, 1200);
   };
 
   const toggleExtraPermission = (key: keyof typeof formData.extraPermissions) => {
@@ -57,11 +123,13 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onBack }) => {
     });
   };
 
+  // Logic for Fingerprint 1
   const startFingerprintRegistration = () => {
+    if (!isFinger1Enabled) return;
     setIsRegisteringFinger(true);
     setIsFingerRegistered(false);
     setFingerprintImage(null);
-    setFingerprintStatus('開始采集指紋，請按下第1次手指');
+    setFingerprintStatus('開始采集指紋1，請按下第1次手指');
 
     setTimeout(() => {
       setFingerprintStatus('請按下第2次手指...');
@@ -78,10 +146,40 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onBack }) => {
   };
 
   const verifyFingerprint = () => {
-    if (!isFingerRegistered) return;
-    setFingerprintStatus('正在驗證指紋，請按下手指...');
+    if (!isFingerRegistered || !isFinger1Enabled) return;
+    setFingerprintStatus('正在驗證指紋1，請按下手指...');
     setTimeout(() => {
       setFingerprintStatus('指紋驗證通過！匹配度：99.8%');
+    }, 800);
+  };
+
+  // Logic for Fingerprint 2
+  const startFingerprintRegistration2 = () => {
+    if (!isFinger2Enabled) return;
+    setIsRegisteringFinger2(true);
+    setIsFingerRegistered2(false);
+    setFingerprintImage2(null);
+    setFingerprintStatus2('開始采集指紋2，請按下第1次手指');
+
+    setTimeout(() => {
+      setFingerprintStatus2('請按下第2次手指...');
+      setTimeout(() => {
+        setFingerprintStatus2('請按下第3次手指...');
+        setTimeout(() => {
+          setIsRegisteringFinger2(false);
+          setIsFingerRegistered2(true);
+          setFingerprintStatus2('指紋登記2成功！');
+          setFingerprintImage2('https://images.unsplash.com/photo-1518133910546-b6c2fb7d79e3?auto=format&fit=crop&q=80&w=200&h=200');
+        }, 1000);
+      }, 1000);
+    }, 1000);
+  };
+
+  const verifyFingerprint2 = () => {
+    if (!isFingerRegistered2 || !isFinger2Enabled) return;
+    setFingerprintStatus2('正在驗證指紋2，請按下手指...');
+    setTimeout(() => {
+      setFingerprintStatus2('指紋驗證通過！匹配度：99.6%');
     }, 800);
   };
 
@@ -92,176 +190,267 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onBack }) => {
     { id: 'equipmentOp', label: '設備操作權限', icon: Settings },
   ];
 
+  const mainContainerClass = isModal 
+    ? "bg-white rounded-2xl w-full max-w-4xl overflow-hidden shadow-2xl" 
+    : "bg-white rounded-2xl shadow-2xl w-full max-w-4xl overflow-hidden animate-in fade-in zoom-in-95 duration-300";
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl overflow-hidden animate-in fade-in zoom-in-95 duration-300">
+    <div className={isModal ? "" : "min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-4"}>
+      <div className={mainContainerClass}>
         {/* Header */}
-        <div className="bg-blue-600 p-6 text-white flex justify-between items-center">
+        <div className="bg-blue-600 p-5 text-white flex justify-between items-center">
           <div>
-            <h2 className="text-2xl font-bold">新用戶註冊</h2>
-            <p className="text-blue-100 text-sm mt-1">請填寫以下信息完成 MES 系統賬號註冊</p>
+            <h2 className="text-xl font-bold">{isEdit ? '用戶信息編輯' : '新用戶註冊'}</h2>
+            <p className="text-blue-100 text-[10px] mt-0.5">
+              {isEdit ? `正在修改員工 ${formData.employeeId} 的基礎資料與權限配置` : '請填寫以下信息完成 MES 系統賬號註冊'}
+            </p>
           </div>
-          <Building2 size={32} className="opacity-40" />
+          <div className="flex items-center space-x-2">
+            <Building2 size={24} className="opacity-30" />
+            {isModal && (
+              <button 
+                onClick={onBack}
+                className="p-1.5 hover:bg-white/10 rounded-full transition-colors ml-2"
+              >
+                <X size={20} />
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Form Body */}
-        <form onSubmit={handleSubmit} className="p-8">
+        <form onSubmit={handleSubmit} className="p-6 md:p-8">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
             {/* Left Column - Text Info */}
-            <div className="space-y-6">
-              <div className="grid grid-cols-1 gap-6">
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 gap-4">
                 <div className="space-y-1">
-                  <label className="text-sm font-semibold text-slate-700 flex items-center">
-                    <User size={14} className="mr-1.5 text-blue-500" /> 姓名
+                  <label className="text-xs font-bold text-slate-700 flex items-center uppercase tracking-wide">
+                    <User size={12} className="mr-1.5 text-blue-500" /> 姓名
                   </label>
                   <input
                     required
                     type="text"
                     value={formData.name}
                     onChange={(e) => setFormData({...formData, name: e.target.value})}
-                    className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-                    placeholder="請輸入真實姓名"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm transition-all"
+                    placeholder="真實姓名"
                   />
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-sm font-semibold text-slate-700 flex items-center">
-                    <IdCard size={14} className="mr-1.5 text-blue-500" /> 工號
+                  <label className="text-xs font-bold text-slate-700 flex items-center uppercase tracking-wide">
+                    <IdCard size={12} className="mr-1.5 text-blue-500" /> 工號
                   </label>
                   <input
                     required
                     type="text"
+                    disabled={isEdit}
                     value={formData.employeeId}
                     onChange={(e) => setFormData({...formData, employeeId: e.target.value})}
-                    className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-                    placeholder="請輸入工號"
+                    className={`w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm transition-all font-mono ${isEdit ? 'bg-slate-50 text-slate-400 cursor-not-allowed' : ''}`}
+                    placeholder="Employee ID"
                   />
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-sm font-semibold text-slate-700 flex items-center">
-                    <Building2 size={14} className="mr-1.5 text-blue-500" /> 部門
+                  <label className="text-xs font-bold text-slate-700 flex items-center uppercase tracking-wide">
+                    <Building2 size={12} className="mr-1.5 text-blue-500" /> 部門
                   </label>
                   <input
                     required
                     type="text"
                     value={formData.department}
                     onChange={(e) => setFormData({...formData, department: e.target.value})}
-                    className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-                    placeholder="e.g. Vulkan"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm transition-all"
+                    placeholder="部門名稱"
                   />
                 </div>
 
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-700 flex items-center uppercase tracking-wide">
+                      <Briefcase size={12} className="mr-1.5 text-blue-500" /> 崗位
+                    </label>
+                    <select
+                      value={formData.position}
+                      onChange={(e) => setFormData({...formData, position: e.target.value})}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white text-sm transition-all"
+                    >
+                      <option value="機構">機構</option>
+                      <option value="電控">電控</option>
+                      <option value="視覺">視覺</option>
+                      <option value="導入">導入</option>
+                      <option value="工程師">工程師</option>
+                      <option value="高級工程師">高級工程師</option>
+                    </select>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-700 flex items-center uppercase tracking-wide">
+                      <GraduationCap size={12} className="mr-1.5 text-blue-500" /> 技術等級
+                    </label>
+                    <select
+                      value={formData.techLevel}
+                      onChange={(e) => setFormData({...formData, techLevel: e.target.value})}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white text-sm transition-all"
+                    >
+                      <option value="1級(Level C)">1級(Level C)</option>
+                      <option value="2級(Level B)">2級(Level B)</option>
+                      <option value="3級(Level A)">3級(Level A)</option>
+                      <option value="開發">開發</option>
+                    </select>
+                  </div>
+                </div>
+
                 <div className="space-y-1">
-                  <label className="text-sm font-semibold text-slate-700 flex items-center">
-                    <Briefcase size={14} className="mr-1.5 text-blue-500" /> 崗位
+                  <label className="text-xs font-bold text-slate-700 flex items-center uppercase tracking-wide">
+                    <Lock size={12} className="mr-1.5 text-blue-500" /> {isEdit ? '重置密碼 (留空則不修改)' : '登入密碼'}
                   </label>
-                  <select
-                    value={formData.position}
-                    onChange={(e) => setFormData({...formData, position: e.target.value})}
-                    className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white transition-all"
-                  >
-                    <option value="機構">機構</option>
-                    <option value="電控">電控</option>
-                    <option value="視覺">視覺</option>
-                    <option value="導入">導入</option>
-                  </select>
+                  <div className="relative">
+                    <input
+                      required={!isEdit}
+                      type={showPassword ? 'text' : 'password'}
+                      value={formData.password}
+                      onChange={(e) => setFormData({...formData, password: e.target.value})}
+                      className="w-full px-3 py-2 pr-10 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm transition-all"
+                      placeholder={isEdit ? "••••••••" : "請設置登入密碼"}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-blue-500 transition-colors"
+                    >
+                      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
 
-            {/* Right Column - Biometrics / Fingerprint */}
-            <div className="bg-slate-50 p-6 rounded-xl border border-slate-200 flex flex-col items-center">
-              <h3 className="text-sm font-bold text-slate-800 self-start mb-4 flex items-center">
-                <Fingerprint size={16} className="mr-2 text-blue-600" /> 生物信息登記
-              </h3>
-              
-              <div className="w-32 h-32 bg-white rounded-xl border-2 border-dashed border-slate-300 flex items-center justify-center relative overflow-hidden group mb-4">
-                {fingerprintImage ? (
-                  <img src={fingerprintImage} alt="Fingerprint" className="w-full h-full object-cover opacity-80" />
-                ) : (
-                  <Fingerprint size={48} className={`text-slate-200 ${isRegisteringFinger ? 'animate-pulse text-blue-300' : ''}`} />
-                )}
-                {isRegisteringFinger && (
-                  <div className="absolute inset-0 bg-blue-500/10 flex items-center justify-center">
-                    <div className="w-full h-0.5 bg-blue-400 absolute animate-[bounce_2s_infinite]"></div>
+            {/* Right Column - Biometrics with Conditional Enablement */}
+            <div className="flex flex-col space-y-4">
+              {/* Biometrics 1 - Enablement controlled by hasFingerprint1 (True -> Disabled, False -> Enabled) */}
+              <div className={`bg-slate-50 p-4 rounded-xl border border-slate-200 flex flex-col items-center shadow-sm w-2/3 mx-auto transition-all relative
+                ${!isFinger1Enabled ? 'opacity-50 grayscale pointer-events-none' : 'ring-1 ring-blue-100'}`}>
+                
+                {!isFinger1Enabled && (
+                  <div className="absolute top-2 right-2 flex items-center text-slate-500" title="數據已鎖定">
+                    <LockKeyhole size={12} />
+                    <span className="text-[8px] ml-1 font-bold">已錄入</span>
                   </div>
                 )}
-              </div>
 
-              <div className="w-full bg-slate-900 text-green-400 p-3 rounded-lg font-mono text-xs h-16 flex items-center mb-4 border border-slate-800 shadow-inner">
-                <div className="flex items-start">
-                  <span className="mr-2">$></span>
-                  <span>{fingerprintStatus}</span>
+                <h3 className="text-xs font-bold text-slate-800 self-start mb-2.5 flex items-center">
+                  <Fingerprint size={14} className="mr-1.5 text-blue-600" /> 生物信息登記1
+                </h3>
+                
+                <div className="w-20 h-20 bg-white rounded-xl border-2 border-dashed border-slate-300 flex items-center justify-center relative overflow-hidden group mb-2.5">
+                  {fingerprintImage ? (
+                    <img src={fingerprintImage} alt="Fingerprint" className="w-full h-full object-cover opacity-80" />
+                  ) : (
+                    <Fingerprint size={32} className={`text-slate-200 ${isRegisteringFinger ? 'animate-pulse text-blue-300' : ''}`} />
+                  )}
+                  {isRegisteringFinger && (
+                    <div className="absolute inset-0 bg-blue-500/10 flex items-center justify-center">
+                      <div className="w-full h-0.5 bg-blue-400 absolute animate-[bounce_2s_infinite]"></div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="w-full bg-slate-900 text-green-400 p-2 rounded-lg font-mono text-[9px] h-9 flex items-center mb-2.5 border border-slate-800 shadow-inner overflow-hidden">
+                  <div className="flex items-start">
+                    <span className="mr-1.5">$></span>
+                    <span className="truncate">{fingerprintStatus}</span>
+                  </div>
+                </div>
+
+                <div className="flex gap-2 w-full">
+                  <button
+                    type="button"
+                    onClick={startFingerprintRegistration}
+                    disabled={isRegisteringFinger || !isFinger1Enabled}
+                    className={`flex-1 flex items-center justify-center py-1.5 px-2 rounded-lg text-[10px] font-bold transition-all shadow-sm
+                      ${(isRegisteringFinger || !isFinger1Enabled) ? 'bg-slate-200 text-slate-400 border-slate-200' : 'bg-white border border-blue-600 text-blue-600 hover:bg-blue-50'}`}
+                  >
+                    <Scan size={12} className="mr-1" /> {isFingerRegistered ? '重新登記' : '登記1'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={verifyFingerprint}
+                    disabled={!isFingerRegistered || isRegisteringFinger || !isFinger1Enabled}
+                    className={`flex-1 flex items-center justify-center py-1.5 px-2 rounded-lg text-[10px] font-bold transition-all shadow-sm
+                      ${(!isFingerRegistered || isRegisteringFinger || !isFinger1Enabled) ? 'bg-slate-200 text-slate-400' : 'bg-blue-600 text-white hover:bg-blue-700'}`}
+                  >
+                    <ShieldCheck size={12} className="mr-1" /> 驗證1
+                  </button>
                 </div>
               </div>
 
-              <div className="flex gap-2 w-full">
-                <button
-                  type="button"
-                  onClick={startFingerprintRegistration}
-                  disabled={isRegisteringFinger}
-                  className={`flex-1 flex items-center justify-center py-2 px-3 rounded-lg text-xs font-bold transition-all shadow-sm
-                    ${isRegisteringFinger ? 'bg-slate-200 text-slate-400' : 'bg-white border border-blue-600 text-blue-600 hover:bg-blue-50'}`}
-                >
-                  <Scan size={14} className="mr-1.5" /> 指紋登記
-                </button>
-                <button
-                  type="button"
-                  onClick={verifyFingerprint}
-                  disabled={!isFingerRegistered || isRegisteringFinger}
-                  className={`flex-1 flex items-center justify-center py-2 px-3 rounded-lg text-xs font-bold transition-all shadow-sm
-                    ${(!isFingerRegistered || isRegisteringFinger) ? 'bg-slate-200 text-slate-400' : 'bg-blue-600 text-white hover:bg-blue-700'}`}
-                >
-                  <ShieldCheck size={14} className="mr-1.5" /> 指紋驗證
-                </button>
-              </div>
-            </div>
+              {/* Biometrics 2 - Enablement controlled by hasFingerprint2 (True -> Disabled, False -> Enabled) */}
+              <div className={`bg-slate-50 p-4 rounded-xl border border-slate-200 flex flex-col items-center shadow-sm w-2/3 mx-auto transition-all relative
+                ${!isFinger2Enabled ? 'opacity-50 grayscale pointer-events-none' : 'ring-1 ring-indigo-100'}`}>
+                
+                {!isFinger2Enabled && (
+                  <div className="absolute top-2 right-2 flex items-center text-slate-500" title="數據已鎖定">
+                    <LockKeyhole size={12} />
+                    <span className="text-[8px] ml-1 font-bold">已錄入</span>
+                  </div>
+                )}
 
-            {/* Additional Info Rows */}
-            <div className="space-y-1">
-              <label className="text-sm font-semibold text-slate-700 flex items-center">
-                <GraduationCap size={14} className="mr-1.5 text-blue-500" /> 技術等級
-              </label>
-              <select
-                value={formData.techLevel}
-                onChange={(e) => setFormData({...formData, techLevel: e.target.value})}
-                className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white transition-all"
-              >
-                <option value="1級(Level C)">1級(Level C)</option>
-                <option value="2級(Level B)">2級(Level B)</option>
-                <option value="3級(Level A)">3級(Level A)</option>
-                <option value="開發">開發</option>
-              </select>
-            </div>
+                <h3 className="text-xs font-bold text-slate-800 self-start mb-2.5 flex items-center">
+                  <Fingerprint size={14} className="mr-1.5 text-indigo-600" /> 生物信息登記2
+                </h3>
+                
+                <div className="w-20 h-20 bg-white rounded-xl border-2 border-dashed border-slate-300 flex items-center justify-center relative overflow-hidden group mb-2.5">
+                  {fingerprintImage2 ? (
+                    <img src={fingerprintImage2} alt="Fingerprint 2" className="w-full h-full object-cover opacity-80" />
+                  ) : (
+                    <Fingerprint size={32} className={`text-slate-200 ${isRegisteringFinger2 ? 'animate-pulse text-indigo-300' : ''}`} />
+                  )}
+                  {isRegisteringFinger2 && (
+                    <div className="absolute inset-0 bg-indigo-500/10 flex items-center justify-center">
+                      <div className="w-full h-0.5 bg-indigo-400 absolute animate-[bounce_2s_infinite]"></div>
+                    </div>
+                  )}
+                </div>
 
-            <div className="space-y-1">
-              <label className="text-sm font-semibold text-slate-700 flex items-center">
-                <Lock size={14} className="mr-1.5 text-blue-500" /> 密碼
-              </label>
-              <div className="relative">
-                <input
-                  required
-                  type={showPassword ? 'text' : 'password'}
-                  value={formData.password}
-                  onChange={(e) => setFormData({...formData, password: e.target.value})}
-                  className="w-full px-4 py-2.5 pr-10 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-                  placeholder="請設置登入密碼"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-blue-500 transition-colors"
-                >
-                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
+                <div className="w-full bg-slate-900 text-indigo-400 p-2 rounded-lg font-mono text-[9px] h-9 flex items-center mb-2.5 border border-slate-800 shadow-inner overflow-hidden">
+                  <div className="flex items-start">
+                    <span className="mr-1.5">$></span>
+                    <span className="truncate">{fingerprintStatus2}</span>
+                  </div>
+                </div>
+
+                <div className="flex gap-2 w-full">
+                  <button
+                    type="button"
+                    onClick={startFingerprintRegistration2}
+                    disabled={isRegisteringFinger2 || !isFinger2Enabled}
+                    className={`flex-1 flex items-center justify-center py-1.5 px-2 rounded-lg text-[10px] font-bold transition-all shadow-sm
+                      ${(isRegisteringFinger2 || !isFinger2Enabled) ? 'bg-slate-200 text-slate-400 border-slate-200' : 'bg-white border border-indigo-600 text-indigo-600 hover:bg-indigo-50'}`}
+                  >
+                    <Scan size={12} className="mr-1" /> {isFingerRegistered2 ? '重新登記' : '登記2'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={verifyFingerprint2}
+                    disabled={!isFingerRegistered2 || isRegisteringFinger2 || !isFinger2Enabled}
+                    className={`flex-1 flex items-center justify-center py-1.5 px-2 rounded-lg text-[10px] font-bold transition-all shadow-sm
+                      ${(!isFingerRegistered2 || isRegisteringFinger2 || !isFinger2Enabled) ? 'bg-slate-200 text-slate-400' : 'bg-indigo-600 text-white hover:bg-indigo-700'}`}
+                  >
+                    <ShieldCheck size={12} className="mr-1" /> 驗證2
+                  </button>
+                </div>
               </div>
             </div>
 
             {/* Permission (Full Width) */}
-            <div className="md:col-span-2 space-y-3 pt-4 border-t border-slate-100">
-              <label className="text-sm font-semibold text-slate-700">操作權限</label>
-              <div className="flex flex-wrap gap-4">
+            <div className="md:col-span-2 space-y-2.5 pt-4 border-t border-slate-100">
+              <label className="text-xs font-bold text-slate-700 flex items-center uppercase tracking-wide">
+                <UserCheck size={12} className="mr-1.5 text-blue-500" /> 操作權限級別
+              </label>
+              <div className="flex flex-wrap gap-6">
                 {['操作員', '工程師', '管理員'].map((perm) => (
                   <label key={perm} className="flex items-center cursor-pointer group">
                     <div className="relative flex items-center">
@@ -272,11 +461,11 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onBack }) => {
                         checked={formData.permission === perm}
                         onChange={() => setFormData({...formData, permission: perm})}
                       />
-                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${formData.permission === perm ? 'border-blue-600 bg-blue-600' : 'border-slate-300 group-hover:border-slate-400'}`}>
-                        {formData.permission === perm && <div className="w-2 h-2 bg-white rounded-full"></div>}
+                      <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center transition-all ${formData.permission === perm ? 'border-blue-600 bg-blue-600' : 'border-slate-300 group-hover:border-slate-400'}`}>
+                        {formData.permission === perm && <div className="w-1.5 h-1.5 bg-white rounded-full"></div>}
                       </div>
                     </div>
-                    <span className={`ml-2 text-sm font-medium ${formData.permission === perm ? 'text-blue-700' : 'text-slate-600'}`}>
+                    <span className={`ml-2 text-xs font-bold ${formData.permission === perm ? 'text-blue-700' : 'text-slate-600'}`}>
                       {perm}
                     </span>
                   </label>
@@ -285,9 +474,11 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onBack }) => {
             </div>
 
             {/* Extra Permissions (Multi-select) */}
-            <div className="md:col-span-2 space-y-3 pt-2">
-              <label className="text-sm font-semibold text-slate-700">額外權限 (多選)</label>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="md:col-span-2 space-y-2.5 pt-2">
+              <label className="text-xs font-bold text-slate-700 flex items-center uppercase tracking-wide">
+                <Zap size={12} className="mr-1.5 text-blue-500" /> 附加功能權限
+              </label>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 {extraPermsList.map((perm) => {
                   const isActive = formData.extraPermissions[perm.id as keyof typeof formData.extraPermissions];
                   return (
@@ -295,18 +486,18 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onBack }) => {
                       key={perm.id}
                       type="button"
                       onClick={() => toggleExtraPermission(perm.id as keyof typeof formData.extraPermissions)}
-                      className={`flex items-center p-3 rounded-xl border-2 transition-all text-left ${
+                      className={`flex items-center p-2 rounded-lg border transition-all text-left ${
                         isActive 
                           ? 'border-blue-500 bg-blue-50 text-blue-700 shadow-sm' 
                           : 'border-slate-100 bg-slate-50 text-slate-500 hover:border-slate-200'
                       }`}
                     >
-                      <div className={`p-1.5 rounded-lg mr-2 ${isActive ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-400'}`}>
-                        <perm.icon size={14} />
+                      <div className={`p-1 rounded-md mr-2 ${isActive ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-400'}`}>
+                        <perm.icon size={11} />
                       </div>
-                      <span className="text-xs font-bold leading-tight">{perm.label}</span>
+                      <span className="text-[10px] font-bold leading-tight">{perm.label}</span>
                       <div className="ml-auto">
-                        {isActive ? <CheckSquare size={16} /> : <Square size={16} className="opacity-20" />}
+                        {isActive ? <CheckSquare size={14} className="text-blue-600" /> : <Square size={14} className="opacity-20" />}
                       </div>
                     </button>
                   );
@@ -315,22 +506,22 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onBack }) => {
             </div>
 
             {/* Buttons (Full Width) */}
-            <div className="md:col-span-2 flex items-center gap-4 mt-6">
+            <div className="md:col-span-2 flex items-center gap-3 mt-4">
               <button
                 type="button"
                 onClick={onBack}
-                className="flex-1 flex items-center justify-center py-3 px-4 border border-slate-300 text-slate-600 rounded-xl font-semibold hover:bg-slate-50 transition-all active:scale-95 outline-none"
+                className="flex-1 flex items-center justify-center py-2.5 px-4 border border-slate-300 text-slate-600 rounded-xl text-sm font-bold hover:bg-slate-50 transition-all active:scale-95 outline-none"
               >
-                <ArrowLeft size={18} className="mr-2" /> 取消
+                <ArrowLeft size={16} className="mr-2" /> {isEdit ? '取消編輯' : '返回'}
               </button>
               <button
                 type="submit"
                 disabled={loading}
-                className={`flex-[2] flex items-center justify-center bg-blue-600 text-white py-3 px-4 rounded-xl font-semibold hover:bg-blue-700 shadow-lg shadow-blue-200 transition-all active:scale-95 outline-none ${loading ? 'opacity-70 cursor-not-allowed' : ''}`}
+                className={`flex-[2] flex items-center justify-center bg-blue-600 text-white py-2.5 px-4 rounded-xl text-sm font-bold hover:bg-blue-700 shadow-lg shadow-blue-200 transition-all active:scale-95 outline-none ${loading ? 'opacity-70 cursor-not-allowed' : ''}`}
               >
-                {loading ? '提交中...' : (
+                {loading ? '正在提交...' : (
                   <>
-                    <CheckCircle size={18} className="mr-2" /> 完成註冊
+                    <CheckCircle size={16} className="mr-2" /> {isEdit ? '保存修改內容' : '完成註冊申請'}
                   </>
                 )}
               </button>
@@ -339,11 +530,13 @@ const RegisterPage: React.FC<RegisterPageProps> = ({ onBack }) => {
         </form>
 
         {/* Footer */}
-        <div className="p-4 bg-slate-50 border-t border-slate-100 text-center">
-          <p className="text-xs text-slate-400 flex items-center justify-center">
-            <Info size={12} className="mr-1.5" /> 註冊後需經由管理員審核方可啟用完整權限。
-          </p>
-        </div>
+        {!isModal && (
+          <div className="p-3 bg-slate-50 border-t border-slate-100 text-center">
+            <p className="text-[10px] text-slate-400 flex items-center justify-center">
+              <Info size={11} className="mr-1.5" /> 提示：賬號申請提交後需經由系統管理員審核。
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );

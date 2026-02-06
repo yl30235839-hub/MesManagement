@@ -8,7 +8,7 @@ import {
   X, Thermometer, Activity, Clock, Cpu, Maximize2, Minimize2, 
   Fingerprint, ChevronRight, Calendar, Truck, Layers,
   Play, Square, User, Hash, CheckCircle2, ClipboardEdit, Save, AlertCircle,
-  Scan, ShieldCheck, FileWarning
+  Scan, ShieldCheck, FileWarning, MessageSquare, Edit3
 } from 'lucide-react';
 import { Equipment, MachineStatus, EquipmentType } from '../types';
 
@@ -23,10 +23,20 @@ declare global {
 
 // Predefined time slots for manual clock-in
 const TIME_SLOTS = [
-  '00:00~01:00', '01:00~02:00', '02:00~03:00', '03:00~04:00', '04:00~05:00', '05:00~06:00',
-  '06:00~07:00', '07:00~08:00', '08:00~09:00', '09:00~10:00', '10:00~11:00', '11:00~12:00',
+  '08:00~09:00', '09:00~10:00', '10:00~11:00', '11:00~12:00',
   '12:00~13:00', '14:00~15:00', '15:00~16:00', '16:00~17:00', '17:00~18:00',
-  '18:00~19:00', '19:00~20:00', '20:00~21:00', '21:00~22:00', '22:00~23:00', '23:00~24:00'
+  '18:00~19:00', '19:00~20:00', '20:00~21:00', '21:00~22:00', '22:00~23:00', '23:00~24:00',
+  '00:00~01:00', '01:00~02:00', '02:00~03:00', '03:00~04:00', '04:00~05:00', '05:00~06:00',
+  '06:00~07:00', '07:00~08:00'
+];
+
+// Predefined reasons for missed clock-in
+const MISSED_REASONS = [
+  '忘記打卡',
+  '維修機臺',
+  '臨時支援',
+  '調班/請假',
+  '其他'
 ];
 
 // --- 3D Components ---
@@ -202,7 +212,6 @@ const FactoryScene: React.FC<{
       ))}
 
       <OrbitControls makeDefault minPolarAngle={0} maxPolarAngle={Math.PI / 2.1} />
-      {/* Fix: Removed duplicate fov attribute as reported in error log on line 204 */}
       <PerspectiveCamera makeDefault position={[0, 25, 40]} fov={45} />
       <Environment preset="city" />
       <ContactShadows position={[0, 0, 0]} opacity={0.4} scale={100} blur={2} far={4.5} />
@@ -237,7 +246,8 @@ const Line3DView: React.FC<Line3DViewProps> = ({ equipmentList, onOpenAttendance
   const [retroForm, setRetroForm] = useState({
     date: new Date().toISOString().slice(0, 10),
     timeSlot: '08:00~09:00',
-    reason: ''
+    missedReason: '忘記打卡',
+    otherReason: ''
   });
 
   const [isSubmittingRetro, setIsSubmittingRetro] = useState(false);
@@ -412,10 +422,12 @@ const Line3DView: React.FC<Line3DViewProps> = ({ equipmentList, onOpenAttendance
     setIsSubmittingRetro(true);
     try {
       console.log(`[MES API] Submitting Makeup Record...`);
+      const finalReason = retroForm.missedReason === '其他' ? retroForm.otherReason : retroForm.missedReason;
+      
       const response = await api.post('https://localhost:7044/api/CheckIn/MakeUpRecord', {
         missedDate: retroForm.date,
         missedPeriod: retroForm.timeSlot,
-        missedReason: retroForm.reason
+        missedReason: finalReason
       });
 
       const { code, message } = response.data;
@@ -434,8 +446,9 @@ const Line3DView: React.FC<Line3DViewProps> = ({ equipmentList, onOpenAttendance
         setVerifyStatus('請掃描指紋以確認身份');
         setRetroForm({ 
           date: new Date().toISOString().slice(0, 10), 
-          timeSlot: '08:00~09:00', 
-          reason: '' 
+          timeSlot: '08:00~09:00',
+          missedReason: '忘記打卡',
+          otherReason: ''
         });
         alert(message || '補卡記錄提交成功');
       } else {
@@ -550,6 +563,7 @@ const Line3DView: React.FC<Line3DViewProps> = ({ equipmentList, onOpenAttendance
 
         <div className="w-full h-full">
           <Canvas shadows dpr={[1, 2]}>
+            {/* Fix: Use selectedItem?.id instead of undefined selectedId */}
             <FactoryScene equipmentList={equipmentList} onItemClick={handleItemClick} selectedId={selectedItem?.id || null} isScanning={isScanning} />
           </Canvas>
         </div>
@@ -738,7 +752,7 @@ const Line3DView: React.FC<Line3DViewProps> = ({ equipmentList, onOpenAttendance
               </div>
 
               <div className="space-y-4">
-                <div className="grid grid-cols-1 gap-4">
+                <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1">
                     <label className="text-xs font-bold text-slate-700 flex items-center">
                       <Calendar size={12} className="mr-1.5 text-blue-500" /> 補卡日期
@@ -770,14 +784,35 @@ const Line3DView: React.FC<Line3DViewProps> = ({ equipmentList, onOpenAttendance
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-slate-700">補卡原因說明</label>
-                  <textarea
-                    value={retroForm.reason}
-                    onChange={(e) => setRetroForm({...retroForm, reason: e.target.value})}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 min-h-[60px]"
-                    placeholder="例如：漏帶卡、指紋儀感應失敗..."
-                  />
+                  <label className="text-xs font-bold text-slate-700 flex items-center">
+                    <MessageSquare size={12} className="mr-1.5 text-blue-500" /> 未打卡原因
+                  </label>
+                  <select
+                    required
+                    value={retroForm.missedReason}
+                    onChange={(e) => setRetroForm({...retroForm, missedReason: e.target.value})}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 bg-white appearance-none cursor-pointer"
+                  >
+                    {MISSED_REASONS.map(reason => (
+                      <option key={reason} value={reason}>{reason}</option>
+                    ))}
+                  </select>
                 </div>
+
+                {retroForm.missedReason === '其他' && (
+                  <div className="space-y-1 animate-in slide-in-from-top-2 duration-200">
+                    <label className="text-xs font-bold text-slate-700 flex items-center">
+                      <Edit3 size={12} className="mr-1.5 text-blue-500" /> 其他原因說明
+                    </label>
+                    <textarea
+                      required
+                      value={retroForm.otherReason}
+                      onChange={(e) => setRetroForm({...retroForm, otherReason: e.target.value})}
+                      placeholder="請手動輸入補卡原因..."
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 bg-white min-h-[60px] resize-none transition-all"
+                    />
+                  </div>
+                )}
               </div>
 
               <div className="flex gap-3 pt-2">
