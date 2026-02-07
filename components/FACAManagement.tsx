@@ -80,6 +80,7 @@ interface FACAManagementProps {
 }
 
 const FACAManagement: React.FC<FACAManagementProps> = ({ onBack }) => {
+  const [pendingItems, setPendingItems] = useState<FACAPendingItem[]>(MOCK_PENDING);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [appliedSolutionId, setAppliedSolutionId] = useState<string | null>(null);
@@ -102,7 +103,7 @@ const FACAManagement: React.FC<FACAManagementProps> = ({ onBack }) => {
     }
   });
 
-  const selectedItem = MOCK_PENDING.find(i => i.id === selectedId);
+  const selectedItem = pendingItems.find(i => i.id === selectedId);
 
   // Form State
   const [facaForm, setFacaForm] = useState({
@@ -196,7 +197,12 @@ const FACAManagement: React.FC<FACAManagementProps> = ({ onBack }) => {
     setIsSubmitting(true);
     setTimeout(() => {
       setIsSubmitting(false);
-      alert(`FACA 分析項目 ${selectedId} 已成功上傳雲端！`);
+      
+      // 更新邏輯：從待處理列表中刪除對應的項目
+      const updatedPendingItems = pendingItems.filter(item => item.id !== selectedId);
+      setPendingItems(updatedPendingItems);
+      
+      alert(`FACA 分析項目 ${selectedId} 已成功上傳雲端並標記為處理完成！`);
       setSelectedId(null);
     }, 1500);
   };
@@ -230,32 +236,44 @@ const FACAManagement: React.FC<FACAManagementProps> = ({ onBack }) => {
             <h3 className="font-bold text-slate-800 flex items-center">
               <Clock size={18} className="mr-2 text-red-500" /> 待處理列表
             </h3>
-            <span className="bg-red-100 text-red-700 text-xs font-bold px-2 py-1 rounded-full">{MOCK_PENDING.filter(i => i.status !== 'COMPLETED').length} 條異常</span>
+            <span className="bg-red-100 text-red-700 text-xs font-bold px-2 py-1 rounded-full">{pendingItems.length} 條異常</span>
           </div>
           <div className="flex-1 overflow-y-auto p-3 space-y-3 bg-slate-50/50 custom-scrollbar">
-            {MOCK_PENDING.map(item => (
-              <div 
-                key={item.id} 
-                onClick={() => handleSelectItem(item)}
-                className={`p-4 rounded-xl border-2 transition-all cursor-pointer group hover:shadow-md ${selectedId === item.id ? 'bg-blue-600 border-blue-600 text-white shadow-lg scale-[1.02]' : 'bg-white border-slate-100 text-slate-600'}`}
-              >
-                <div className="flex justify-between items-start mb-2">
-                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase ${selectedId === item.id ? 'bg-blue-400 text-white' : 'bg-slate-100 text-slate-500'}`}>
-                    {item.alarmCode}
-                  </span>
-                  <span className={`text-[10px] ${selectedId === item.id ? 'text-blue-100' : 'text-slate-400'} font-mono`}>{item.date}</span>
-                </div>
-                <h4 className={`font-bold text-sm ${selectedId === item.id ? 'text-white' : 'text-slate-800'}`}>{item.machineName}</h4>
-                <p className={`text-xs mt-1 truncate ${selectedId === item.id ? 'text-blue-100' : 'text-slate-500'}`}>{item.alarmContent}</p>
-                <div className="flex items-center justify-between mt-4">
-                  <div className="flex items-center space-x-2 text-[10px]">
-                    <Clock size={12} />
-                    <span>{item.startTime} - {item.endTime}</span>
+            {pendingItems.length > 0 ? (
+              pendingItems.map(item => (
+                <div 
+                  key={item.id} 
+                  onClick={() => handleSelectItem(item)}
+                  className={`p-4 rounded-xl border-2 transition-all cursor-pointer group hover:shadow-md ${selectedId === item.id ? 'bg-blue-600 border-blue-600 text-white shadow-lg scale-[1.02]' : 'bg-white border-slate-100 text-slate-600'}`}
+                >
+                  <div className="flex justify-between items-start mb-2">
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase ${selectedId === item.id ? 'bg-blue-400 text-white' : 'bg-slate-100 text-slate-500'}`}>
+                      {item.alarmCode}
+                    </span>
+                    <span className={`text-[10px] ${selectedId === item.id ? 'text-blue-100' : 'text-slate-400'} font-mono`}>{item.date}</span>
                   </div>
-                  <ChevronRight size={14} className={selectedId === item.id ? 'text-white' : 'text-slate-300'} />
+                  <h4 className={`font-bold text-sm ${selectedId === item.id ? 'text-white' : 'text-slate-800'}`}>{item.machineName}</h4>
+                  <p className={`text-xs mt-1 truncate ${selectedId === item.id ? 'text-blue-100' : 'text-slate-500'}`}>{item.alarmContent}</p>
+                  <div className="flex items-center justify-between mt-4">
+                    <div className="flex items-center space-x-2 text-[10px]">
+                      <Clock size={12} />
+                      <span>{item.startTime} - {item.endTime}</span>
+                    </div>
+                    <ChevronRight size={14} className={selectedId === item.id ? 'text-white' : 'text-slate-300'} />
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="h-full flex flex-col items-center justify-center text-slate-400 p-8 text-center space-y-4">
+                <div className="p-4 bg-green-50 rounded-full">
+                  <CheckCircle size={32} className="text-green-500" />
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-slate-600">所有異常已處理完成</p>
+                  <p className="text-xs mt-1">目前沒有待分析的 FACA 項目</p>
                 </div>
               </div>
-            ))}
+            )}
           </div>
         </div>
 
@@ -299,7 +317,7 @@ const FACAManagement: React.FC<FACAManagementProps> = ({ onBack }) => {
                     </div>
                   </div>
                   
-                  {/* 修改後：故障描述控件 - 自動生成且唯讀 */}
+                  {/* 故障描述控件 - 自動生成且唯讀 */}
                   <div className="col-span-2 space-y-4">
                     <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center justify-between">
                       <div className="flex items-center">
@@ -538,7 +556,7 @@ const FACAManagement: React.FC<FACAManagementProps> = ({ onBack }) => {
                       <span className={`text-xs font-bold ${isOtherFault ? 'text-blue-600' : 'text-slate-500'}`}>其他故障 (開放自定義編輯)</span>
                     </label>
 
-                    {/* 更換零件按鈕 - 修改為彈窗邏輯 */}
+                    {/* 更換零件按鈕 */}
                     <div className="flex items-center space-x-3">
                       {partsRecord && (
                         <span className="text-[10px] text-green-600 bg-green-50 px-2 py-1 rounded flex items-center font-bold">
@@ -613,7 +631,6 @@ const FACAManagement: React.FC<FACAManagementProps> = ({ onBack }) => {
             </div>
             
             <div className="flex-1 overflow-y-auto p-8 space-y-8 custom-scrollbar">
-              {/* 當前更換零件信息 */}
               <div className="grid grid-cols-2 gap-6">
                 <div className="space-y-1">
                   <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">品名</label>
@@ -675,7 +692,6 @@ const FACAManagement: React.FC<FACAManagementProps> = ({ onBack }) => {
                 </div>
               </div>
 
-              {/* 原物料模塊 */}
               <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200 space-y-4">
                 <h4 className="text-xs font-bold text-slate-600 flex items-center">
                   <Trash2 size={14} className="mr-2" /> 原物料模塊 (更換前零件)

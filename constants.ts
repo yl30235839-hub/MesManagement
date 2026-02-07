@@ -1,4 +1,3 @@
-
 import { Factory, ProductionLine, Equipment, MachineStatus, EquipmentType } from './types';
 
 export const MOCK_FACTORIES: Factory[] = [
@@ -13,7 +12,7 @@ export const MOCK_EQUIPMENT: Equipment[] = [
   { 
     id: 'E1', 
     lineId: 'L1', 
-    name: '組裝機械臂 Alpha', 
+    name: 'Cap流量檢測設備', 
     type: EquipmentType.AssemblyEquipment, 
     status: MachineStatus.Running, 
     temperature: 65, 
