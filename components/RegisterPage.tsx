@@ -360,7 +360,7 @@ const RegisterPage: React.FC<RegisterPageProps> = ({
 
                 <div className="w-full bg-slate-900 text-green-400 p-2 rounded-lg font-mono text-[9px] h-9 flex items-center mb-2.5 border border-slate-800 shadow-inner overflow-hidden">
                   <div className="flex items-start">
-                    <span className="mr-1.5">$></span>
+                    <span className="mr-1.5">{"$>"}</span>
                     <span className="truncate">{fingerprintStatus}</span>
                   </div>
                 </div>
@@ -417,7 +417,7 @@ const RegisterPage: React.FC<RegisterPageProps> = ({
 
                 <div className="w-full bg-slate-900 text-indigo-400 p-2 rounded-lg font-mono text-[9px] h-9 flex items-center mb-2.5 border border-slate-800 shadow-inner overflow-hidden">
                   <div className="flex items-start">
-                    <span className="mr-1.5">$></span>
+                    <span className="mr-1.5">{"$>"}</span>
                     <span className="truncate">{fingerprintStatus2}</span>
                   </div>
                 </div>

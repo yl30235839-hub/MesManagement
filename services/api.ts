@@ -3,9 +3,9 @@ import axios from 'axios';
 
 // Create a customized axios instance
 const api = axios.create({
-  // Setting the baseURL to the user's local service to facilitate development
-  baseURL: 'https://localhost:7201/api', 
-  timeout: 5000,
+  // Setting the baseURL to relative /api to support the local Express backend
+  baseURL: '/api', 
+  timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
   },

@@ -78,6 +78,14 @@ const App: React.FC = () => {
     setCurrentPage('REGISTER');
   };
 
+  const handleUpdateFactory = (lines: ProductionLine[], equipment: Equipment[]) => {
+    // In this simplified version, LineManagement manages its own lines state,
+    // but we can update the global equipment state.
+    setAllEquipment(equipment);
+    // If we wanted to update lines globally, we'd need to lift that state too.
+    // For now, we'll let LineManagement handle its own lines.
+  };
+
   const renderContent = () => {
     if (!isAuthenticated) {
       if (currentPage === 'REGISTER') {
@@ -88,7 +96,13 @@ const App: React.FC = () => {
 
     switch (currentPage) {
       case 'LINES':
-        return <LineManagement onViewEquipment={handleViewEquipment} />;
+        return (
+          <LineManagement 
+            onViewEquipment={handleViewEquipment} 
+            onUpdateFactory={handleUpdateFactory} 
+            equipmentList={allEquipment}
+          />
+        );
       case 'EQUIPMENT':
         return (
           <EquipmentManagement 

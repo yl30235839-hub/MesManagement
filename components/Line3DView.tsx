@@ -226,6 +226,7 @@ interface Line3DViewProps {
 }
 
 const Line3DView: React.FC<Line3DViewProps> = ({ equipmentList, onOpenAttendance, onOpenFACA }) => {
+  const [isMonitoring, setIsMonitoring] = useState(false);
   const [selectedItem, setSelectedItem] = useState<Equipment | null>(null);
   const [isScanning, setIsScanning] = useState(false);
   const [isRetroModalOpen, setIsRetroModalOpen] = useState(false);
@@ -485,24 +486,44 @@ const Line3DView: React.FC<Line3DViewProps> = ({ equipmentList, onOpenAttendance
               <Layers size={20} className="mr-2 text-blue-500" /> Factory Digital Twin - 3D Monitoring
             </h3>
             <p className="text-xs text-slate-400 mt-2">場景內實例：{equipmentList.length} 個單位</p>
-            {isScanning && (
-              <div className="mt-4 flex items-center text-blue-400 animate-pulse text-xs font-bold">
-                <Activity size={12} className="mr-2" /> 指紋儀採集進行中...
+            <div className="mt-4 flex items-center space-x-3">
+              <div className={`flex items-center px-3 py-1 rounded-full text-[10px] font-bold ${isMonitoring ? 'bg-green-500/20 text-green-400 border border-green-500/30' : 'bg-slate-800 text-slate-500 border border-slate-700'}`}>
+                <div className={`w-1.5 h-1.5 rounded-full mr-2 ${isMonitoring ? 'bg-green-500 animate-pulse' : 'bg-slate-600'}`}></div>
+                {isMonitoring ? '監控運行中' : '監控已停止'}
               </div>
-            )}
+              {isScanning && (
+                <div className="flex items-center text-blue-400 animate-pulse text-[10px] font-bold">
+                  <Activity size={12} className="mr-2" /> 指紋儀採集進行中...
+                </div>
+              )}
+            </div>
           </div>
           
-          <button 
-            onClick={onOpenFACA}
-            className="pointer-events-auto flex items-center px-6 py-3 bg-red-600/90 backdrop-blur-md text-white rounded-xl font-bold text-xs shadow-xl shadow-red-900/20 hover:bg-red-700 hover:scale-105 active:scale-95 transition-all group"
-          >
-            <div className="relative mr-2">
-              <FileWarning size={16} />
-              <div className="absolute -top-1 -right-1 w-2 h-2 bg-white rounded-full animate-ping"></div>
-              <div className="absolute -top-1 -right-1 w-2 h-2 bg-white rounded-full"></div>
-            </div>
-            FACA 異常分析管理 <ChevronRight size={14} className="ml-2 group-hover:translate-x-1 transition-transform" />
-          </button>
+          <div className="flex space-x-3 pointer-events-auto">
+            <button 
+              onClick={() => setIsMonitoring(!isMonitoring)}
+              className={`flex items-center px-6 py-3 rounded-xl font-bold text-xs shadow-xl transition-all active:scale-95 ${
+                isMonitoring 
+                  ? 'bg-red-600/90 text-white hover:bg-red-700 shadow-red-900/20' 
+                  : 'bg-green-600/90 text-white hover:bg-green-700 shadow-green-900/20'
+              }`}
+            >
+              {isMonitoring ? <Square size={16} className="mr-2" /> : <Play size={16} className="mr-2" />}
+              {isMonitoring ? '停止' : '運行'}
+            </button>
+
+            <button 
+              onClick={onOpenFACA}
+              className="flex items-center px-6 py-3 bg-slate-800/90 backdrop-blur-md text-white rounded-xl font-bold text-xs shadow-xl shadow-slate-900/20 hover:bg-slate-700 hover:scale-105 active:scale-95 transition-all group"
+            >
+              <div className="relative mr-2">
+                <FileWarning size={16} />
+                <div className="absolute -top-1 -right-1 w-2 h-2 bg-white rounded-full animate-ping"></div>
+                <div className="absolute -top-1 -right-1 w-2 h-2 bg-white rounded-full"></div>
+              </div>
+              FACA 異常分析管理 <ChevronRight size={14} className="ml-2 group-hover:translate-x-1 transition-transform" />
+            </button>
+          </div>
         </div>
         
         {/* 移除原本位於右上角的縮放按鈕 */}

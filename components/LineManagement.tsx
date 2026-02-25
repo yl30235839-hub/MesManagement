@@ -4,16 +4,20 @@ import { MachineStatus, ProductionLine, LineType } from '../types';
 import api from '../services/api';
 import { 
   PlayCircle, StopCircle, AlertTriangle, Settings, Plus, 
-  Monitor, X, Layers, Building2, Save, RotateCw, MapPin, Tag, CheckCircle2
+  Monitor, X, Layers, Building2, Save, RotateCw, MapPin, Tag, CheckCircle2, Upload, Download
 } from 'lucide-react';
 
 interface LineManagementProps {
   onViewEquipment: (lineId: string) => void;
+  onUpdateFactory?: (lines: ProductionLine[], equipment: Equipment[]) => void;
+  equipmentList?: Equipment[];
 }
 
-const LineManagement: React.FC<LineManagementProps> = ({ onViewEquipment }) => {
+const LineManagement: React.FC<LineManagementProps> = ({ onViewEquipment, onUpdateFactory, equipmentList = [] }) => {
   const [lines, setLines] = useState<ProductionLine[]>(MOCK_LINES);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
+  const [fileName, setFileName] = useState('my-factory');
   const [newLineData, setNewLineData] = useState({ 
     name: '', 
     description: '', 
@@ -25,6 +29,64 @@ const LineManagement: React.FC<LineManagementProps> = ({ onViewEquipment }) => {
   const [factoryInfo, setFactoryInfo] = useState({ code: 'GL', floor: '3F' });
   const [isSavingFactory, setIsSavingFactory] = useState(false);
   const [isCreatingLine, setIsCreatingLine] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  const handleUploadClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    const formData = new FormData();
+    formData.append('factoryFile', file);
+
+    try {
+      // 調用本地後端 API 解析工廠文件
+      const response = await api.post('/factory/upload', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+
+      if (response.data.code === 200) {
+        const { lines: newLines, equipment: newEquipment } = response.data.data;
+        if (newLines) setLines(newLines);
+        if (onUpdateFactory && newEquipment) onUpdateFactory(newLines || [], newEquipment);
+        alert('工廠文件上傳並解析成功！');
+      } else {
+        alert(`上傳失敗: ${response.data.message}`);
+      }
+    } catch (error: any) {
+      console.error('Upload Error:', error);
+      alert(`上傳過程發生錯誤: ${error.message}`);
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const handleSaveLocalFactory = () => {
+    const factoryData = {
+      lines: lines,
+      equipment: equipmentList
+    };
+
+    const blob = new Blob([JSON.stringify(factoryData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${fileName}.factory`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    setIsSaveModalOpen(false);
+    alert(`工廠信息已成功導出為 ${fileName}.factory`);
+  };
 
   const getStatusColor = (status: MachineStatus) => {
     switch (status) {
@@ -112,6 +174,36 @@ const LineManagement: React.FC<LineManagementProps> = ({ onViewEquipment }) => {
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
+      {/* Import/Export Buttons Section */}
+      <div className="flex space-x-4">
+        <input 
+          type="file" 
+          ref={fileInputRef} 
+          onChange={handleFileChange} 
+          accept=".factory" 
+          className="hidden" 
+        />
+        <button 
+          onClick={handleUploadClick}
+          disabled={isUploading}
+          className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2.5 rounded-xl text-sm font-bold flex items-center shadow-lg transition-all active:scale-95 disabled:opacity-50"
+        >
+          {isUploading ? (
+            <RotateCw size={18} className="animate-spin mr-1.5" />
+          ) : (
+            <Upload size={18} className="mr-1.5" />
+          )}
+          導入本地工廠
+        </button>
+        <button 
+          onClick={() => setIsSaveModalOpen(true)}
+          className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2.5 rounded-xl text-sm font-bold flex items-center shadow-lg transition-all active:scale-95"
+        >
+          <Download size={18} className="mr-1.5" />
+          導出本地工廠
+        </button>
+      </div>
+
       {/* Factory Information Section */}
       <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
         <div className="flex items-center mb-6 border-b border-slate-100 pb-3">
@@ -167,12 +259,14 @@ const LineManagement: React.FC<LineManagementProps> = ({ onViewEquipment }) => {
           <h3 className="text-xl font-bold text-slate-800">產綫實例管理</h3>
           <p className="text-sm text-slate-500">當前監控範圍：{factoryInfo.code} 廠區 / {factoryInfo.floor}</p>
         </div>
-        <button 
-          onClick={() => setIsModalOpen(true)} 
-          className="bg-slate-800 hover:bg-slate-900 text-white px-5 py-2.5 rounded-xl text-sm font-bold flex items-center shadow-lg transition-all active:scale-95"
-        >
-          <Plus size={18} className="mr-1.5" /> 新增產綫
-        </button>
+        <div className="flex space-x-3">
+          <button 
+            onClick={() => setIsModalOpen(true)} 
+            className="bg-slate-800 hover:bg-slate-900 text-white px-5 py-2.5 rounded-xl text-sm font-bold flex items-center shadow-lg transition-all active:scale-95"
+          >
+            <Plus size={18} className="mr-1.5" /> 新增產綫
+          </button>
+        </div>
       </div>
 
       {/* Lines Grid */}
@@ -289,6 +383,49 @@ const LineManagement: React.FC<LineManagementProps> = ({ onViewEquipment }) => {
                     創建產綫
                   </>
                 )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isSaveModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+              <h3 className="font-bold text-lg text-slate-800">導出本地工廠</h3>
+              <button onClick={() => setIsSaveModalOpen(false)} className="text-slate-400"><X size={20} /></button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">文件名稱 (.factory) *</label>
+                <div className="flex items-center">
+                  <input 
+                    type="text" 
+                    value={fileName} 
+                    onChange={(e) => setFileName(e.target.value)} 
+                    className="flex-1 px-4 py-2 border border-slate-300 rounded-l-xl outline-none focus:ring-2 focus:ring-emerald-500" 
+                    placeholder="例如: factory-config" 
+                  />
+                  <span className="bg-slate-100 px-3 py-2 border border-l-0 border-slate-300 rounded-r-xl text-slate-500 text-sm font-mono">
+                    .factory
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div className="px-6 py-4 bg-slate-50 border-t flex justify-end space-x-3">
+              <button 
+                onClick={() => setIsSaveModalOpen(false)} 
+                className="px-4 py-2 text-slate-500 font-medium hover:text-slate-700 transition-colors"
+              >
+                取消
+              </button>
+              <button 
+                onClick={handleSaveLocalFactory} 
+                className="px-6 py-2 bg-emerald-600 text-white rounded-xl font-bold shadow-lg shadow-emerald-100 hover:bg-emerald-700 transition-all active:scale-95 flex items-center"
+              >
+                <Save size={16} className="mr-2" />
+                導出文件
               </button>
             </div>
           </div>
