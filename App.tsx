@@ -8,7 +8,7 @@ import Line3DView from './components/Line3DView';
 import DeviceSettings from './components/DeviceSettings';
 import AttendanceMaintenance from './components/AttendanceMaintenance';
 import FACAManagement from './components/FACAManagement';
-import { PageView, Equipment } from './types';
+import { PageView, Equipment, ProductionLine } from './types';
 import { MOCK_EQUIPMENT } from './constants';
 
 const App: React.FC = () => {

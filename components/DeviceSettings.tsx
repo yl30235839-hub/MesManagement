@@ -63,10 +63,12 @@ const DeviceSettings: React.FC<DeviceSettingsProps> = ({ device, onSave, onBack 
     floor: '',
     fingerprintId: '1',
     ip: '192.168.1.100',
-    plcType: 'Mitsubishi Q-Series',
+    plcType: 'Inovance H5U',
     plcPort: '8000',
     plcProtocol: 'MC Protocol (TCP)',
     plcStation: '1',
+    plcDataType: 'CDAB',
+    plcStringReverse: false,
     rack: '0',
     slot: '2'
   });
@@ -82,10 +84,12 @@ const DeviceSettings: React.FC<DeviceSettingsProps> = ({ device, onSave, onBack 
         floor: device.floor || '',
         fingerprintId: device.fingerprintId || '1',
         ip: '192.168.1.100',
-        plcType: 'Mitsubishi Q-Series',
+        plcType: 'Inovance H5U',
         plcPort: '8000',
         plcProtocol: 'MC Protocol (TCP)',
         plcStation: '1',
+        plcDataType: 'CDAB',
+        plcStringReverse: false,
         rack: '0',
         slot: '2'
       });
@@ -636,9 +640,8 @@ const DeviceSettings: React.FC<DeviceSettingsProps> = ({ device, onSave, onBack 
                 <div className="space-y-1">
                   <label className="text-sm font-semibold text-slate-700 flex items-center"><Radio size={14} className="mr-1.5 text-indigo-500" /> PLC 類型</label>
                   <select value={formData.plcType} onChange={(e) => setFormData({...formData, plcType: e.target.value})} className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-white transition-all">
-                    <option>Mitsubishi Q-Series</option>
-                    <option>Siemens S7-1500</option>
-                    <option>Keyence KV-8000</option>
+                    <option>Inovance H3U</option>
+                    <option>Inovance H5U</option>
                   </select>
                 </div>
                 <div className="space-y-1">
@@ -648,6 +651,34 @@ const DeviceSettings: React.FC<DeviceSettingsProps> = ({ device, onSave, onBack 
                 <div className="space-y-1">
                   <label className="text-sm font-semibold text-slate-700 flex items-center"><Zap size={14} className="mr-1.5 text-indigo-500" /> 通訊端口</label>
                   <input type="text" value={formData.plcPort} onChange={(e) => setFormData({...formData, plcPort: e.target.value})} className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none font-mono" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-sm font-semibold text-slate-700 flex items-center"><Hash size={14} className="mr-1.5 text-indigo-500" /> 站號</label>
+                  <input type="text" value={formData.plcStation} onChange={(e) => setFormData({...formData, plcStation: e.target.value})} className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none font-mono" placeholder="PLC 站號" />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-sm font-semibold text-slate-700 flex items-center"><Columns size={14} className="mr-1.5 text-indigo-500" /> 數據類型</label>
+                  <select value={formData.plcDataType} onChange={(e) => setFormData({...formData, plcDataType: e.target.value})} className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-white transition-all">
+                    <option value="ABCD">ABCD</option>
+                    <option value="BADC">BADC</option>
+                    <option value="CDAB">CDAB</option>
+                    <option value="DCBA">DCBA</option>
+                  </select>
+                </div>
+                <div className="space-y-1 flex flex-col justify-end pb-2">
+                  <label className="flex items-center cursor-pointer group">
+                    <div className="relative">
+                      <input 
+                        type="checkbox" 
+                        className="sr-only" 
+                        checked={formData.plcStringReverse}
+                        onChange={(e) => setFormData({...formData, plcStringReverse: e.target.checked})}
+                      />
+                      <div className={`block w-10 h-6 rounded-full transition-colors ${formData.plcStringReverse ? 'bg-indigo-600' : 'bg-slate-300'}`}></div>
+                      <div className={`absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform ${formData.plcStringReverse ? 'translate-x-4' : ''}`}></div>
+                    </div>
+                    <span className="ml-3 text-sm font-semibold text-slate-700 group-hover:text-indigo-600 transition-colors">字符串顛倒</span>
+                  </label>
                 </div>
               </div>
               <div className="mt-8 flex flex-col md:flex-row items-center gap-4">

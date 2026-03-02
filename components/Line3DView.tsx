@@ -278,11 +278,10 @@ const Line3DView: React.FC<Line3DViewProps> = ({ equipmentList, onOpenAttendance
   const handleStartClockIn = async () => {
     if (!selectedItem || selectedItem.type !== EquipmentType.CheckinEquipment) return;
 
-    const fingerNo = parseInt(selectedItem.fingerprintId || '1', 10);
-    
     try {
       const response = await api.post('https://localhost:7044/api/CheckIn/CheckInBegin', {
-        fingerNo: fingerNo
+        lineSystemName: selectedItem.lineId,
+        equipmentSystemName: selectedItem.id
       });
 
       const { code, message } = response.data;

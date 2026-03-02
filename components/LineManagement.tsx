@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { MOCK_LINES } from '../constants';
-import { MachineStatus, ProductionLine, LineType } from '../types';
+import { MachineStatus, ProductionLine, LineType, Equipment, EquipmentType } from '../types';
 import api from '../services/api';
 import { 
   PlayCircle, StopCircle, AlertTriangle, Settings, Plus, 
@@ -16,8 +16,6 @@ interface LineManagementProps {
 const LineManagement: React.FC<LineManagementProps> = ({ onViewEquipment, onUpdateFactory, equipmentList = [] }) => {
   const [lines, setLines] = useState<ProductionLine[]>(MOCK_LINES);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
-  const [fileName, setFileName] = useState('my-factory');
   const [newLineData, setNewLineData] = useState({ 
     name: '', 
     description: '', 
@@ -30,10 +28,16 @@ const LineManagement: React.FC<LineManagementProps> = ({ onViewEquipment, onUpda
   const [isSavingFactory, setIsSavingFactory] = useState(false);
   const [isCreatingLine, setIsCreatingLine] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const exportFileInputRef = React.useRef<HTMLInputElement>(null);
 
   const handleUploadClick = () => {
     fileInputRef.current?.click();
+  };
+
+  const handleExportClick = () => {
+    exportFileInputRef.current?.click();
   };
 
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -41,51 +45,109 @@ const LineManagement: React.FC<LineManagementProps> = ({ onViewEquipment, onUpda
     if (!file) return;
 
     setIsUploading(true);
-    const formData = new FormData();
-    formData.append('factoryFile', file);
 
     try {
-      // 調用本地後端 API 解析工廠文件
-      const response = await api.post('/factory/upload', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data'
-        }
+      // 調用指定的 API 地址加載工廠項目
+      const response = await api.post('https://localhost:7044/api/Factory/LoadProject', {
+        fileName: file.name
       });
 
       if (response.data.code === 200) {
-        const { lines: newLines, equipment: newEquipment } = response.data.data;
-        if (newLines) setLines(newLines);
-        if (onUpdateFactory && newEquipment) onUpdateFactory(newLines || [], newEquipment);
-        alert('工廠文件上傳並解析成功！');
+        const { site, floor, lineSet } = response.data.data;
+        
+        // 映射產綫數據
+        const mappedLines: ProductionLine[] = (lineSet || []).map((item: any) => {
+          // 處理可能的嵌套結構
+          const l = item.IManufacturingLine || item;
+          return {
+            id: l.SystemName,
+            factoryId: 'F1',
+            name: l.LineName,
+            description: l.Description,
+            category: l.Line,
+            lineType: l.TypeString as LineType,
+            status: MachineStatus.Stopped,
+            outputPerHour: 0,
+            targetOutput: 1000,
+          };
+        });
+
+        // 映射設備數據
+        const mappedEquipment: Equipment[] = [];
+        (lineSet || []).forEach((item: any) => {
+          const l = item.IManufacturingLine || item;
+          if (l.EquipmentSet) {
+            l.EquipmentSet.forEach((eItem: any) => {
+              const e = eItem.IEquipment || eItem;
+              mappedEquipment.push({
+                id: e.SystemName,
+                lineId: l.SystemName,
+                name: e.EquipmentName,
+                type: e.TypeString as EquipmentType,
+                description: e.Description,
+                status: MachineStatus.Stopped,
+                temperature: 20,
+                vibration: 0,
+                lastMaintenance: new Date().toISOString().split('T')[0],
+                sn: e.EquipmentSN,
+                factoryArea: site,
+                floor: floor
+              });
+            });
+          }
+        });
+
+        // 更新狀態
+        setFactoryInfo({ code: site || 'GL', floor: floor || '3F' });
+        setLines(mappedLines);
+        if (onUpdateFactory) {
+          onUpdateFactory(mappedLines, mappedEquipment);
+        }
+        
+        alert(response.data.message || '工廠項目已成功加載！');
       } else {
-        alert(`上傳失敗: ${response.data.message}`);
+        alert(`加載失敗: ${response.data.message || '未知錯誤'}`);
       }
     } catch (error: any) {
-      console.error('Upload Error:', error);
-      alert(`上傳過程發生錯誤: ${error.message}`);
+      console.error('Load Project Error:', error);
+      if (error.message === 'Network Error') {
+        alert('通訊異常：無法連線至 https://localhost:7044。請確保後端服務已啟動並信任 SSL 憑證。');
+      } else {
+        alert(`加載過程發生錯誤: ${error.message}`);
+      }
     } finally {
       setIsUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
-  const handleSaveLocalFactory = () => {
-    const factoryData = {
-      lines: lines,
-      equipment: equipmentList
-    };
+  const handleExportFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
 
-    const blob = new Blob([JSON.stringify(factoryData, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `${fileName}.factory`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-    setIsSaveModalOpen(false);
-    alert(`工廠信息已成功導出為 ${fileName}.factory`);
+    setIsExporting(true);
+    try {
+      // 調用指定的 API 地址進行工廠導出保存
+      const response = await api.post('https://localhost:7044/api/Factory/SaveProject', {
+        fileName: file.name
+      });
+
+      if (response.data.code === 200) {
+        alert(response.data.message || '工廠信息已成功導出。');
+      } else {
+        alert(`導出失敗: ${response.data.code === 404 ? '找不到路徑' : response.data.message}`);
+      }
+    } catch (error: any) {
+      console.error('Export Error:', error);
+      if (error.message === 'Network Error') {
+        alert('通訊異常：無法連線至 https://localhost:7044。請確保後端服務已啟動並信任 SSL 憑證。');
+      } else {
+        alert(`導出過程發生錯誤: ${error.message}`);
+      }
+    } finally {
+      setIsExporting(false);
+      if (exportFileInputRef.current) exportFileInputRef.current.value = '';
+    }
   };
 
   const getStatusColor = (status: MachineStatus) => {
@@ -183,6 +245,13 @@ const LineManagement: React.FC<LineManagementProps> = ({ onViewEquipment, onUpda
           accept=".factory" 
           className="hidden" 
         />
+        <input 
+          type="file" 
+          ref={exportFileInputRef} 
+          onChange={handleExportFileChange} 
+          accept=".factory" 
+          className="hidden" 
+        />
         <button 
           onClick={handleUploadClick}
           disabled={isUploading}
@@ -196,11 +265,16 @@ const LineManagement: React.FC<LineManagementProps> = ({ onViewEquipment, onUpda
           導入本地工廠
         </button>
         <button 
-          onClick={() => setIsSaveModalOpen(true)}
-          className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2.5 rounded-xl text-sm font-bold flex items-center shadow-lg transition-all active:scale-95"
+          onClick={handleExportClick}
+          disabled={isExporting}
+          className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2.5 rounded-xl text-sm font-bold flex items-center shadow-lg transition-all active:scale-95 disabled:opacity-50"
         >
-          <Download size={18} className="mr-1.5" />
-          導出本地工廠
+          {isExporting ? (
+            <RotateCw size={18} className="animate-spin mr-1.5" />
+          ) : (
+            <Download size={18} className="mr-1.5" />
+          )}
+          {isExporting ? '處理中...' : '導出本地工廠'}
         </button>
       </div>
 
@@ -389,48 +463,6 @@ const LineManagement: React.FC<LineManagementProps> = ({ onViewEquipment, onUpda
         </div>
       )}
 
-      {isSaveModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
-            <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-              <h3 className="font-bold text-lg text-slate-800">導出本地工廠</h3>
-              <button onClick={() => setIsSaveModalOpen(false)} className="text-slate-400"><X size={20} /></button>
-            </div>
-            <div className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">文件名稱 (.factory) *</label>
-                <div className="flex items-center">
-                  <input 
-                    type="text" 
-                    value={fileName} 
-                    onChange={(e) => setFileName(e.target.value)} 
-                    className="flex-1 px-4 py-2 border border-slate-300 rounded-l-xl outline-none focus:ring-2 focus:ring-emerald-500" 
-                    placeholder="例如: factory-config" 
-                  />
-                  <span className="bg-slate-100 px-3 py-2 border border-l-0 border-slate-300 rounded-r-xl text-slate-500 text-sm font-mono">
-                    .factory
-                  </span>
-                </div>
-              </div>
-            </div>
-            <div className="px-6 py-4 bg-slate-50 border-t flex justify-end space-x-3">
-              <button 
-                onClick={() => setIsSaveModalOpen(false)} 
-                className="px-4 py-2 text-slate-500 font-medium hover:text-slate-700 transition-colors"
-              >
-                取消
-              </button>
-              <button 
-                onClick={handleSaveLocalFactory} 
-                className="px-6 py-2 bg-emerald-600 text-white rounded-xl font-bold shadow-lg shadow-emerald-100 hover:bg-emerald-700 transition-all active:scale-95 flex items-center"
-              >
-                <Save size={16} className="mr-2" />
-                導出文件
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { MachineStatus, Equipment, EquipmentType } from '../types';
+import api from '../services/api';
 import { 
   Thermometer, Activity, Wrench, Clock, Settings, Filter, 
   Database, Table as TableIcon, Plus, Trash2, Cpu, 
@@ -30,6 +31,7 @@ const EquipmentManagement: React.FC<EquipmentManagementProps> = ({ lineId, equip
     description: '核心組裝產綫，配備雙臂協作機器人與視覺掃描模組。'
   });
   const [isSavingLine, setIsSavingLine] = useState(false);
+  const [isAddingEquipment, setIsAddingEquipment] = useState(false);
 
   // Modal State for Adding Equipment
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -46,41 +48,89 @@ const EquipmentManagement: React.FC<EquipmentManagementProps> = ({ lineId, equip
     ? equipmentList.filter(e => e.lineId === lineId) 
     : equipmentList;
 
-  const handleSaveLineInfo = () => {
+  const handleSaveLineInfo = async () => {
     setIsSavingLine(true);
-    setTimeout(() => {
+    try {
+      const response = await api.post('https://localhost:7044/api/Line/LineMaintenance', {
+        lineName: lineInfo.name,
+        description: lineInfo.description,
+        lineIP: lineInfo.hostIp,
+        station: lineInfo.station,
+        productName: lineInfo.model,
+        phaseName: lineInfo.phase,
+        phmBillNo: lineInfo.phmOrder,
+        process: lineInfo.process,
+        line: lineInfo.lineCategory
+      });
+
+      if (response.data.code === 200) {
+        alert(response.data.message || '產綫環境配置信息已成功更新！');
+      } else {
+        alert(`保存失敗: ${response.data.message || '未知錯誤'}`);
+      }
+    } catch (error: any) {
+      console.error('Save Line Info Error:', error);
+      if (error.message === 'Network Error') {
+        alert('通訊異常：無法連線至 https://localhost:7044。請確保後端服務已啟動並信任 SSL 憑證。');
+      } else {
+        alert(`保存過程發生錯誤: ${error.response?.data?.message || error.message}`);
+      }
+    } finally {
       setIsSavingLine(false);
-      alert('產綫環境配置信息已成功更新！');
-    }, 800);
+    }
   };
 
-  const handleAddEquipment = () => {
+  const handleAddEquipment = async () => {
     if (!newEquipData.name.trim()) {
       alert("請輸入設備名稱");
       return;
     }
 
-    const newId = `E${Math.floor(Math.random() * 10000)}`;
-    
-    const newEquip: Equipment = {
-      id: newId,
-      lineId: lineId || 'L1',
-      name: newEquipData.name,
-      type: newEquipData.type,
-      description: newEquipData.description,
-      status: MachineStatus.Stopped,
-      temperature: 20,
-      vibration: 0,
-      lastMaintenance: new Date().toISOString().split('T')[0],
-      factoryArea: newEquipData.factoryArea,
-      floor: newEquipData.floor,
-      sn: newEquipData.sn || newId,
-      fingerprintId: '1'
-    };
-    
-    onAddEquipment(newEquip);
-    setIsAddModalOpen(false);
-    setNewEquipData({ type: EquipmentType.AssemblyEquipment, name: '', description: '', factoryArea: '', floor: '', sn: '' });
+    setIsAddingEquipment(true);
+    try {
+      // 調用指定的 API 地址進行設備新增
+      const response = await api.post('https://localhost:7044/api/Line/LineMaintenance', {
+        equipmentType: newEquipData.type,
+        equipmentName: newEquipData.name,
+        description: newEquipData.description
+      });
+
+      if (response.data.code === 200) {
+        const newId = `E${Math.floor(Math.random() * 10000)}`;
+        
+        const newEquip: Equipment = {
+          id: newId,
+          lineId: lineId || 'L1',
+          name: newEquipData.name,
+          type: newEquipData.type,
+          description: newEquipData.description,
+          status: MachineStatus.Stopped,
+          temperature: 20,
+          vibration: 0,
+          lastMaintenance: new Date().toISOString().split('T')[0],
+          factoryArea: newEquipData.factoryArea,
+          floor: newEquipData.floor,
+          sn: newEquipData.sn || newId,
+          fingerprintId: '1'
+        };
+        
+        onAddEquipment(newEquip);
+        setIsAddModalOpen(false);
+        setNewEquipData({ type: EquipmentType.AssemblyEquipment, name: '', description: '', factoryArea: '', floor: '', sn: '' });
+        alert(response.data.message || '設備已成功新增');
+      } else {
+        alert(`新增失敗: ${response.data.message || '未知錯誤'}`);
+      }
+    } catch (error: any) {
+      console.error('Add Equipment Error:', error);
+      if (error.message === 'Network Error') {
+        alert('通訊異常：無法連線至 https://localhost:7044。請確保後端服務已啟動並信任 SSL 憑證。');
+      } else {
+        alert(`新增過程發生錯誤: ${error.response?.data?.message || error.message}`);
+      }
+    } finally {
+      setIsAddingEquipment(false);
+    }
   };
 
   return (
@@ -114,7 +164,7 @@ const EquipmentManagement: React.FC<EquipmentManagementProps> = ({ lineId, equip
                 className="flex items-center px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-100 transition-all active:scale-95 disabled:opacity-50"
               >
                 {isSavingLine ? <RotateCw size={14} className="animate-spin mr-2" /> : <Save size={14} className="mr-2" />}
-                {isSavingLine ? '正在保存...' : '保存產綫配置'}
+                {isSavingLine ? '處理中...' : '保存產綫配置'}
               </button>
             </div>
             <div className="p-6">
@@ -347,8 +397,27 @@ const EquipmentManagement: React.FC<EquipmentManagementProps> = ({ lineId, equip
             </div>
 
             <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex justify-end space-x-3">
-              <button onClick={() => setIsAddModalOpen(false)} className="px-4 py-2 text-sm text-slate-600 hover:bg-slate-200 rounded-lg">取消</button>
-              <button onClick={handleAddEquipment} className="px-4 py-2 text-sm text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-sm">確定新增</button>
+              <button 
+                onClick={() => setIsAddModalOpen(false)} 
+                disabled={isAddingEquipment}
+                className="px-4 py-2 text-sm text-slate-600 hover:bg-slate-200 rounded-lg disabled:opacity-50"
+              >
+                取消
+              </button>
+              <button 
+                onClick={handleAddEquipment} 
+                disabled={isAddingEquipment}
+                className="px-4 py-2 text-sm text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-sm flex items-center disabled:opacity-50"
+              >
+                {isAddingEquipment ? (
+                  <>
+                    <RotateCw size={14} className="animate-spin mr-2" />
+                    處理中...
+                  </>
+                ) : (
+                  '新增設備'
+                )}
+              </button>
             </div>
           </div>
         </div>

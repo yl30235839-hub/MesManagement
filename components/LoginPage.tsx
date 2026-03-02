@@ -18,19 +18,46 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onGoToRegister }) => {
     setLoading(true);
     setError(null);
     
+    // 1. Hardcoded admin login check
+    if (username === 'admin' && password === 'Fx123456.') {
+      try {
+        // Simulate a small delay for better UX
+        await new Promise(resolve => setTimeout(resolve, 500));
+        localStorage.setItem('mes_token', 'admin_token_bypass');
+        onLogin();
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+
+    // 2. API-based login for other credentials
     try {
-      // In a real scenario, this would be: 
-      // const response = await api.post('/auth/login', { username, password });
-      // For now, we simulate the axios call behavior
-      await new Promise(resolve => setTimeout(resolve, 800));
-      
-      // Simulate success
-      localStorage.setItem('mes_token', 'dummy_token_12345');
-      onLogin();
+      const response = await api.post('https://localhost:7044/api/Login/LoginSystem', {
+        userID: username,
+        userPassword: password
+      });
+
+      const { code, message, data } = response.data;
+
+      if (data && data.result === 1) {
+        // Success Handling
+        localStorage.setItem('mes_token', `token_${username}`);
+        onLogin();
+      } else {
+        // Failure Handling (result === 0)
+        setError(message || '賬號或密碼錯誤，要求用戶重新輸入。');
+      }
     } catch (err: any) {
-      setError('登入失敗，請檢查賬號或密碼。');
-      console.error('Login Error:', err);
+      // Error Handling
+      console.error('Login API Error:', err);
+      if (err.message === 'Network Error') {
+        setError('網絡錯誤：無法連接至 https://localhost:7044。請確保服務已啟動。');
+      } else {
+        setError(err.response?.data?.message || '登入系統發生異常，請稍後再試。');
+      }
     } finally {
+      // Reset Loading State
       setLoading(false);
     }
   };
@@ -62,7 +89,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onGoToRegister }) => {
 
           <form onSubmit={handleSubmit} className="space-y-6">
             {error && (
-              <div className="p-3 bg-red-50 border border-red-200 text-red-600 text-xs rounded-lg animate-pulse">
+              <div className="p-3 bg-red-50 border border-red-200 text-red-600 text-xs rounded-lg animate-in fade-in slide-in-from-top-1">
                 {error}
               </div>
             )}
@@ -106,7 +133,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onGoToRegister }) => {
                 disabled={loading}
                 className={`w-full flex items-center justify-center bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all transform active:scale-95 ${loading ? 'opacity-70 cursor-not-allowed' : ''}`}
               >
-                {loading ? '登入中...' : (
+                {loading ? '處理中...' : (
                   <>
                     登入系統 <ArrowRight size={18} className="ml-2" />
                   </>
