@@ -48,25 +48,113 @@ interface ItemProps {
   isGlobalScanning?: boolean;
 }
 
+const IndustrialMachine: React.FC<{ isSelected: boolean, hovered: boolean, status?: MachineStatus }> = ({ isSelected, hovered, status }) => {
+  const W = 3.2, H = 3.4, D = 2.8;
+  const baseY = 1.7; 
+
+  const bodyColor = isSelected ? '#3b82f6' : hovered ? '#94a3b8' : '#b0b8c4';
+  
+  return (
+    <group scale={0.6}>
+      {/* Base platform */}
+      <mesh position={[0, baseY - H / 2 + 0.06, 0]}>
+        <boxGeometry args={[W + 0.1, 0.12, D + 0.1]} />
+        <meshStandardMaterial color="#151d25" roughness={0.9} metalness={0.1} />
+      </mesh>
+
+      {/* Main right panel */}
+      <mesh position={[W / 2 - 0.55, baseY, 0]}>
+        <boxGeometry args={[1.1, H - 0.4, D]} />
+        <meshStandardMaterial color={bodyColor} roughness={0.4} metalness={0.7} />
+      </mesh>
+
+      {/* Left frame panel */}
+      <mesh position={[-W / 2 + 0.06, baseY, 0]}>
+        <boxGeometry args={[0.12, H - 0.4, D]} />
+        <meshStandardMaterial color="#2a3542" roughness={0.3} metalness={0.9} />
+      </mesh>
+
+      {/* Back panel */}
+      <mesh position={[0, baseY, -D / 2 + 0.06]}>
+        <boxGeometry args={[W, H - 0.4, 0.12]} />
+        <meshStandardMaterial color={bodyColor} roughness={0.4} metalness={0.7} />
+      </mesh>
+
+      {/* Roof */}
+      <mesh position={[0, baseY + H / 2 - 0.2, 0]}>
+        <boxGeometry args={[W + 0.05, 0.12, D + 0.05]} />
+        <meshStandardMaterial color={bodyColor} roughness={0.4} metalness={0.7} />
+      </mesh>
+
+      {/* Front bottom panel */}
+      <mesh position={[0, baseY - H / 2 + 0.55, D / 2 - 0.06]}>
+        <boxGeometry args={[W, 0.9, 0.12]} />
+        <meshStandardMaterial color={bodyColor} roughness={0.4} metalness={0.7} />
+      </mesh>
+
+      {/* Pillars */}
+      {[
+        [-W / 2 + 0.08, baseY, D / 2 - 0.08],
+        [-W / 2 + 0.08, baseY, -D / 2 + 0.08],
+        [W / 2 - 0.08, baseY, D / 2 - 0.08],
+        [W / 2 - 0.08, baseY, -D / 2 + 0.08],
+      ].map((pos, i) => (
+        <mesh key={i} position={pos as [number, number, number]}>
+          <boxGeometry args={[0.14, H - 0.3, 0.14]} />
+          <meshStandardMaterial color="#2a3542" />
+        </mesh>
+      ))}
+
+      {/* Glass Panels */}
+      <mesh position={[-W / 2 + 0.72, baseY + 0.3, D / 2 - 0.02]}>
+        <boxGeometry args={[1.0, H - 0.6, 0.04]} />
+        <meshStandardMaterial color="#88ccdd" transparent opacity={0.2} side={THREE.DoubleSide} />
+      </mesh>
+      <mesh position={[-0.05, baseY + 0.75, D / 2 - 0.02]}>
+        <boxGeometry args={[0.8, (H - 0.6) * 0.55, 0.04]} />
+        <meshStandardMaterial color="#88ccdd" transparent opacity={0.2} side={THREE.DoubleSide} />
+      </mesh>
+
+      {/* Signal Tower */}
+      <group position={[0.1, baseY + H / 2 - 0.2, -0.1]}>
+         <mesh position={[0, 0.18, 0]}>
+            <cylinderGeometry args={[0.03, 0.03, 0.35, 8]} />
+            <meshStandardMaterial color="#2a3542" />
+         </mesh>
+         <mesh position={[0, 0.38, 0]}>
+            <cylinderGeometry args={[0.07, 0.07, 0.1, 12]} />
+            <meshStandardMaterial color={status === MachineStatus.Stopped ? "#ff2200" : "#330000"} emissive="#ff0000" emissiveIntensity={status === MachineStatus.Stopped ? 1 : 0} />
+         </mesh>
+         <mesh position={[0, 0.5, 0]}>
+            <cylinderGeometry args={[0.07, 0.07, 0.1, 12]} />
+            <meshStandardMaterial color={status === MachineStatus.Warning ? "#ffcc00" : "#332200"} emissive="#ffaa00" emissiveIntensity={status === MachineStatus.Warning ? 1 : 0} />
+         </mesh>
+         <mesh position={[0, 0.62, 0]}>
+            <cylinderGeometry args={[0.07, 0.07, 0.1, 12]} />
+            <meshStandardMaterial color={status === MachineStatus.Running ? "#00ff44" : "#003311"} emissive="#00cc22" emissiveIntensity={status === MachineStatus.Running ? 1 : 0} />
+         </mesh>
+      </group>
+
+      {/* Control Panel Screen */}
+      <mesh position={[W / 2 - 0.57, baseY + 0.6, D / 2 - 0.04]}>
+        <boxGeometry args={[0.7, 0.5, 0.04]} />
+        <meshStandardMaterial color="#0077aa" emissive="#003366" emissiveIntensity={0.8} />
+      </mesh>
+    </group>
+  );
+};
+
 const MachineModel: React.FC<ItemProps> = ({ data, isSelected, onClick, position }) => {
-  const meshRef = useRef<THREE.Mesh>(null);
   const [hovered, setHovered] = useState(false);
   
   return (
     <group position={position} onClick={(e: any) => { e.stopPropagation(); onClick(data); }}>
-      <mesh 
-        ref={meshRef} 
-        position={[0, 1, 0]} 
+      <group 
         onPointerOver={() => { setHovered(true); document.body.style.cursor = 'pointer'; }}
         onPointerOut={() => { setHovered(false); document.body.style.cursor = 'auto'; }}
       >
-        <boxGeometry args={[2, 2, 2]} />
-        <meshStandardMaterial 
-          color={isSelected ? '#3b82f6' : hovered ? '#64748b' : '#334155'} 
-          metalness={0.7} 
-          roughness={0.2} 
-        />
-      </mesh>
+        <IndustrialMachine isSelected={isSelected} hovered={hovered} status={data.status} />
+      </group>
       {isSelected && (
         <mesh position={[0, 0.05, 0]} rotation={[-Math.PI / 2, 0, 0]}>
           <ringGeometry args={[1.5, 1.7, 32]} />
@@ -92,24 +180,10 @@ const AGVModel: React.FC<ItemProps> = ({ data, isSelected, onClick, position }) 
 
   return (
     <group ref={groupRef} position={position} onClick={(e: any) => { e.stopPropagation(); onClick(data); }}>
-      <mesh position={[0, 0.3, 0]} onPointerOver={() => setHovered(true)} onPointerOut={() => setHovered(false)}>
-        <boxGeometry args={[2.5, 0.6, 1.8]} />
-        <meshStandardMaterial color={isSelected ? '#3b82f6' : hovered ? '#fbbf24' : '#f59e0b'} />
-      </mesh>
-      {[-0.8, 0.8].map((x, i) => [-0.6, 0.6].map((z, j) => (
-        <mesh key={`${i}-${j}`} position={[x, 0.15, z]} rotation={[Math.PI/2, 0, 0]}>
-          <cylinderGeometry args={[0.2, 0.2, 0.3, 16]} />
-          <meshStandardMaterial color="#111827" />
-        </mesh>
-      )))}
-      <mesh position={[0, 0.6, 0]}>
-        <cylinderGeometry args={[0.2, 0.2, 0.2, 16]} />
-        <meshBasicMaterial color={data.status === MachineStatus.Running ? '#ef4444' : '#4b5563'} />
-      </mesh>
-      {data.status === MachineStatus.Running && (
-        <pointLight position={[0, 0.8, 0]} intensity={1} color="#ef4444" distance={3} />
-      )}
-      <Text position={[0, 1.2, 0]} fontSize={0.3} color="#451a03" anchorX="center">AGV: {data.name}</Text>
+      <group onPointerOver={() => setHovered(true)} onPointerOut={() => setHovered(false)}>
+        <IndustrialMachine isSelected={isSelected} hovered={hovered} status={data.status} />
+      </group>
+      <Text position={[0, 2.5, 0]} fontSize={0.3} color="#451a03" anchorX="center">AGV: {data.name}</Text>
     </group>
   );
 };
@@ -164,18 +238,55 @@ const FactoryScene: React.FC<{
   }, [equipmentList]);
 
   const rowSpacing = 15;
-  const columnSpacing = 8;
+  const columnSpacing = 3;
 
   return (
     <>
-      <ambientLight intensity={0.8} />
-      <directionalLight position={[10, 20, 10]} intensity={1.5} castShadow />
-      <Grid position={[0, 0, 0]} args={[100, 100]} cellColor="#cbd5e1" sectionColor="#94a3b8" fadeDistance={50} infiniteGrid />
+      <ambientLight intensity={1.2} />
+      <directionalLight position={[20, 30, 20]} intensity={2} castShadow shadow-mapSize={[2048, 2048]} />
+      <pointLight position={[-10, 15, -10]} intensity={1} color="#ffffff" />
       
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]} receiveShadow>
-        <planeGeometry args={[200, 200]} />
-        <meshStandardMaterial color="#f1f5f9" />
-      </mesh>
+      {/* Floor with Safety Lines */}
+      <group position={[0, -0.01, 0]}>
+        {/* Main Floor */}
+        <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+          <planeGeometry args={[200, 200]} />
+          <meshStandardMaterial color="#f8fafc" roughness={0.1} metalness={0.05} />
+        </mesh>
+        
+        {/* Safety Lines (Yellow/Black Hazard Stripes) */}
+        {[-40, -20, 0, 20, 40].map((z) => (
+          <mesh key={`h-line-${z}`} position={[0, 0.01, z]} rotation={[-Math.PI / 2, 0, 0]}>
+            <planeGeometry args={[200, 0.15]} />
+            <meshBasicMaterial color="#fbbf24" />
+          </mesh>
+        ))}
+        {[-40, -20, 0, 20, 40].map((x) => (
+          <mesh key={`v-line-${x}`} position={[x, 0.01, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+            <planeGeometry args={[0.15, 200]} />
+            <meshBasicMaterial color="#fbbf24" />
+          </mesh>
+        ))}
+      </group>
+
+      {/* Workshop Walls */}
+      <group>
+        {/* Back Wall */}
+        <mesh position={[0, 15, -60]}>
+          <planeGeometry args={[200, 30]} />
+          <meshStandardMaterial color="#f1f5f9" />
+        </mesh>
+        {/* Left Wall */}
+        <mesh position={[-60, 15, 0]} rotation={[0, Math.PI / 2, 0]}>
+          <planeGeometry args={[200, 30]} />
+          <meshStandardMaterial color="#f1f5f9" />
+        </mesh>
+        {/* Right Wall */}
+        <mesh position={[60, 15, 0]} rotation={[0, -Math.PI / 2, 0]}>
+          <planeGeometry args={[200, 30]} />
+          <meshStandardMaterial color="#f1f5f9" />
+        </mesh>
+      </group>
 
       {groupedEquipment.map(([lineId, items], rowIndex) => (
         <group key={lineId} position={[0, 0, rowIndex * -rowSpacing]}>

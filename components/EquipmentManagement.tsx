@@ -10,26 +10,45 @@ import {
 
 interface EquipmentManagementProps {
   lineId?: string | null;
+  lineData?: any;
   equipmentList: Equipment[];
   onAddEquipment: (equip: Equipment) => void;
   onMaintainDevice?: (deviceId: string) => void;
 }
 
-const EquipmentManagement: React.FC<EquipmentManagementProps> = ({ lineId, equipmentList, onAddEquipment, onMaintainDevice }) => {
+const EquipmentManagement: React.FC<EquipmentManagementProps> = ({ lineId, lineData, equipmentList, onAddEquipment, onMaintainDevice }) => {
   const [activeTab, setActiveTab] = useState<'STATUS' | 'DATABASE'>('STATUS');
   
   // Production Line Maintenance State
   const [lineInfo, setLineInfo] = useState({
-    name: 'Assembly Line A-01',
-    hostIp: '10.55.120.42',
-    station: 'Final Assembly',
-    model: 'Vulkan-X Pro',
-    phase: 'Mass Production (MP)',
-    process: 'SMT-AOI-FA',
-    phmOrder: 'PHM-2024-00892',
-    lineCategory: 'Main Stream',
-    description: '核心組裝產綫，配備雙臂協作機器人與視覺掃描模組。'
+    name: lineData?.lineName || 'Assembly Line A-01',
+    hostIp: lineData?.lineIP || '10.55.120.42',
+    station: lineData?.station || 'Final Assembly',
+    model: lineData?.productName || 'Vulkan-X Pro',
+    phase: lineData?.phaseName || 'Mass Production (MP)',
+    process: lineData?.process || 'SMT-AOI-FA',
+    phmOrder: lineData?.phmBillNo || 'PHM-2024-00892',
+    lineCategory: lineData?.line || 'Main Stream',
+    description: lineData?.description || '核心組裝產綫，配備雙臂協作機器人與視覺掃描模組。'
   });
+
+  // Update lineInfo when lineData changes
+  React.useEffect(() => {
+    if (lineData) {
+      setLineInfo({
+        name: lineData.lineName || '',
+        hostIp: lineData.lineIP || '',
+        station: lineData.station || '',
+        model: lineData.productName || '',
+        phase: lineData.phaseName || '',
+        process: lineData.process || '',
+        phmOrder: lineData.phmBillNo || '',
+        lineCategory: lineData.line || '',
+        description: lineData.description || ''
+      });
+    }
+  }, [lineData]);
+
   const [isSavingLine, setIsSavingLine] = useState(false);
   const [isAddingEquipment, setIsAddingEquipment] = useState(false);
 
@@ -88,18 +107,21 @@ const EquipmentManagement: React.FC<EquipmentManagementProps> = ({ lineId, equip
 
     setIsAddingEquipment(true);
     try {
+      // 獲取枚舉的英文鍵名 (例如: 'AssemblyEquipment') 而非顯示值 (例如: '組裝設備')
+      const equipmentTypeKey = Object.entries(EquipmentType).find(([_, value]) => value === newEquipData.type)?.[0] || newEquipData.type;
+
       // 調用指定的 API 地址進行設備新增
-      const response = await api.post('https://localhost:7044/api/Line/LineMaintenance', {
-        equipmentType: newEquipData.type,
+      const response = await api.post('https://localhost:7044/api/Line/CreateEquipment', {
+        equipmentType: equipmentTypeKey,
         equipmentName: newEquipData.name,
         description: newEquipData.description
       });
 
       if (response.data.code === 200) {
-        const newId = `E${Math.floor(Math.random() * 10000)}`;
+        const sysName = response.data.data?.equipmentSystemName || `E${Math.floor(Math.random() * 10000)}`;
         
         const newEquip: Equipment = {
-          id: newId,
+          id: sysName,
           lineId: lineId || 'L1',
           name: newEquipData.name,
           type: newEquipData.type,
@@ -110,7 +132,7 @@ const EquipmentManagement: React.FC<EquipmentManagementProps> = ({ lineId, equip
           lastMaintenance: new Date().toISOString().split('T')[0],
           factoryArea: newEquipData.factoryArea,
           floor: newEquipData.floor,
-          sn: newEquipData.sn || newId,
+          sn: newEquipData.sn || sysName,
           fingerprintId: '1'
         };
         
@@ -363,6 +385,7 @@ const EquipmentManagement: React.FC<EquipmentManagementProps> = ({ lineId, equip
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value={EquipmentType.AssemblyEquipment}>{EquipmentType.AssemblyEquipment}</option>
+                  <option value={EquipmentType.WaterVaporEquipment}>{EquipmentType.WaterVaporEquipment}</option>
                   <option value={EquipmentType.TestingEquipment}>{EquipmentType.TestingEquipment}</option>
                   <option value={EquipmentType.AGVCarEquipment}>{EquipmentType.AGVCarEquipment}</option>
                   <option value={EquipmentType.CheckinEquipment}>{EquipmentType.CheckinEquipment}</option>

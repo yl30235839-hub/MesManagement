@@ -8,14 +8,16 @@ import {
 } from 'lucide-react';
 
 interface LineManagementProps {
-  onViewEquipment: (lineId: string) => void;
-  onUpdateFactory?: (lines: ProductionLine[], equipment: Equipment[]) => void;
+  onViewEquipment: (lineId: string, lineData?: any) => void;
+  onUpdateFactory?: (lines: ProductionLine[], equipment: Equipment[], info?: { code: string, floor: string }) => void;
+  lines: ProductionLine[];
   equipmentList?: Equipment[];
+  factoryInfo: { code: string, floor: string };
 }
 
-const LineManagement: React.FC<LineManagementProps> = ({ onViewEquipment, onUpdateFactory, equipmentList = [] }) => {
-  const [lines, setLines] = useState<ProductionLine[]>(MOCK_LINES);
+const LineManagement: React.FC<LineManagementProps> = ({ onViewEquipment, onUpdateFactory, lines, equipmentList = [], factoryInfo }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [enteringLineId, setEnteringLineId] = useState<string | null>(null);
   const [newLineData, setNewLineData] = useState({ 
     name: '', 
     description: '', 
@@ -23,8 +25,13 @@ const LineManagement: React.FC<LineManagementProps> = ({ onViewEquipment, onUpda
     lineType: LineType.NVIDIA 
   });
   
-  // Factory Info State
-  const [factoryInfo, setFactoryInfo] = useState({ code: 'GL', floor: '3F' });
+  // Local UI state for factory info inputs
+  const [localFactoryInfo, setLocalFactoryInfo] = useState(factoryInfo);
+  
+  React.useEffect(() => {
+    setLocalFactoryInfo(factoryInfo);
+  }, [factoryInfo]);
+
   const [isSavingFactory, setIsSavingFactory] = useState(false);
   const [isCreatingLine, setIsCreatingLine] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -98,11 +105,10 @@ const LineManagement: React.FC<LineManagementProps> = ({ onViewEquipment, onUpda
         });
 
         // 更新狀態
-        setFactoryInfo({ code: site || 'GL', floor: floor || '3F' });
-        setLines(mappedLines);
         if (onUpdateFactory) {
-          onUpdateFactory(mappedLines, mappedEquipment);
+          onUpdateFactory(mappedLines, mappedEquipment, { code: site || 'GL', floor: floor || '3F' });
         }
+        setLocalFactoryInfo({ code: site || 'GL', floor: floor || '3F' });
         
         alert(response.data.message || '工廠項目已成功加載！');
       } else {
@@ -150,6 +156,60 @@ const LineManagement: React.FC<LineManagementProps> = ({ onViewEquipment, onUpda
     }
   };
 
+  const handleEnterLine = async (lineId: string) => {
+    setEnteringLineId(lineId);
+    try {
+      const response = await api.post('https://localhost:7044/api/Line/EnterLine', {
+        lineSystemName: lineId
+      });
+
+      if (response.data.code === 200) {
+        const data = response.data.data;
+        
+        // 映射設備數據
+        const mappedEquipment: Equipment[] = (data.equipmentSet || []).map((item: any) => {
+          const e = item.IEquipment || item;
+          return {
+            id: e.SystemName,
+            lineId: lineId,
+            name: e.EquipmentName,
+            type: e.TypeString as EquipmentType,
+            description: e.Description,
+            status: MachineStatus.Stopped,
+            temperature: 20,
+            vibration: 0,
+            lastMaintenance: new Date().toISOString().split('T')[0],
+            sn: e.EquipmentSN,
+            factoryArea: data.site || 'GL',
+            floor: data.floor || '3F'
+          };
+        });
+
+        // 更新全局設備列表
+        if (onUpdateFactory) {
+          const currentLine = lines.find(l => l.id === lineId);
+          if (currentLine) {
+            onUpdateFactory([currentLine], mappedEquipment);
+          }
+        }
+
+        // 跳轉並傳遞產綫詳細數據
+        onViewEquipment(lineId, data);
+      } else {
+        alert(`進入失敗: ${response.data.message || '未知錯誤'}`);
+      }
+    } catch (error: any) {
+      console.error('Enter Line Error:', error);
+      if (error.message === 'Network Error') {
+        alert('通訊異常：無法連線至 https://localhost:7044。請確保後端服務已啟動並信任 SSL 憑證。');
+      } else {
+        alert(`進入過程發生錯誤: ${error.response?.data?.message || error.message}`);
+      }
+    } finally {
+      setEnteringLineId(null);
+    }
+  };
+
   const getStatusColor = (status: MachineStatus) => {
     switch (status) {
       case MachineStatus.Running: return 'bg-green-100 text-green-700 border-green-200';
@@ -164,11 +224,14 @@ const LineManagement: React.FC<LineManagementProps> = ({ onViewEquipment, onUpda
     try {
       // 調用指定的 API 地址，傳入 site (code) 與 floor
       const response = await api.post('https://localhost:7044/api/Factory/FactoryMaintenance', {
-        site: factoryInfo.code,
-        floor: factoryInfo.floor
+        site: localFactoryInfo.code,
+        floor: localFactoryInfo.floor
       });
 
       if (response.data.code === 200) {
+        if (onUpdateFactory) {
+          onUpdateFactory(lines, equipmentList, localFactoryInfo);
+        }
         alert(response.data.message || '工廠基礎信息已成功保存並更新。');
       } else {
         alert(`保存失敗: ${response.data.message}`);
@@ -199,9 +262,9 @@ const LineManagement: React.FC<LineManagementProps> = ({ onViewEquipment, onUpda
 
       // 根據最新的響應結構進行處理
       if (response.data.code === 200) {
-        const sysName = response.data.data?.linesysname || `L${Math.floor(Math.random() * 10000)}`;
+        const sysName = response.data.data?.lineSystemName || `L${Math.floor(Math.random() * 10000)}`;
         
-        // API 成功後，更新本地狀態顯示新產綫，使用返回的 linesysname 作為 ID
+        // API 成功後，更新本地狀態顯示新產綫，使用返回的 lineSystemName 作為 ID
         const newLine: ProductionLine = {
           id: sysName,
           factoryId: 'F1',
@@ -214,7 +277,9 @@ const LineManagement: React.FC<LineManagementProps> = ({ onViewEquipment, onUpda
           targetOutput: 1000,
         };
 
-        setLines([...lines, newLine]);
+        if (onUpdateFactory) {
+          onUpdateFactory([...lines, newLine], equipmentList);
+        }
         setIsModalOpen(false);
         setNewLineData({ name: '', description: '', category: 'Vulkan-A', lineType: LineType.NVIDIA });
         
@@ -292,8 +357,8 @@ const LineManagement: React.FC<LineManagementProps> = ({ onViewEquipment, onUpda
             </label>
             <input 
               type="text" 
-              value={factoryInfo.code}
-              onChange={(e) => setFactoryInfo({...factoryInfo, code: e.target.value})}
+              value={localFactoryInfo.code}
+              onChange={(e) => setLocalFactoryInfo({...localFactoryInfo, code: e.target.value})}
               placeholder="例如: GL"
               className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm font-mono transition-all"
             />
@@ -305,8 +370,8 @@ const LineManagement: React.FC<LineManagementProps> = ({ onViewEquipment, onUpda
             </label>
             <input 
               type="text" 
-              value={factoryInfo.floor}
-              onChange={(e) => setFactoryInfo({...factoryInfo, floor: e.target.value})}
+              value={localFactoryInfo.floor}
+              onChange={(e) => setLocalFactoryInfo({...localFactoryInfo, floor: e.target.value})}
               placeholder="例如: 3F"
               className="w-full px-4 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-sm font-mono transition-all"
             />
@@ -381,10 +446,20 @@ const LineManagement: React.FC<LineManagementProps> = ({ onViewEquipment, onUpda
               </div>
               <div className="flex items-center justify-center">
                 <button 
-                  onClick={() => onViewEquipment(line.id)}
-                  className="w-full md:w-auto px-8 py-3 bg-slate-800 text-white rounded-xl font-bold flex items-center justify-center hover:bg-slate-900 transition-all shadow-md active:scale-95"
+                  onClick={() => handleEnterLine(line.id)}
+                  disabled={enteringLineId === line.id}
+                  className="w-full md:w-auto px-8 py-3 bg-slate-800 text-white rounded-xl font-bold flex items-center justify-center hover:bg-slate-900 transition-all shadow-md active:scale-95 disabled:opacity-50"
                 >
-                  <Monitor size={18} className="mr-2" /> 進入設備管理
+                  {enteringLineId === line.id ? (
+                    <>
+                      <RotateCw size={18} className="animate-spin mr-2" />
+                      處理中...
+                    </>
+                  ) : (
+                    <>
+                      <Monitor size={18} className="mr-2" /> 進入設備管理
+                    </>
+                  )}
                 </button>
               </div>
             </div>

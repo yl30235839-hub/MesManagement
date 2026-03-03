@@ -562,7 +562,7 @@ const DeviceSettings: React.FC<DeviceSettingsProps> = ({ device, onSave, onBack 
 
   const renderBasicInfo = () => {
     const isClockInDevice = device.type === EquipmentType.CheckinEquipment;
-    const isStandardMachine = device.type === EquipmentType.AssemblyEquipment || device.type === EquipmentType.TestingEquipment;
+    const isStandardMachine = device.type === EquipmentType.AssemblyEquipment || device.type === EquipmentType.TestingEquipment || device.type === EquipmentType.WaterVaporEquipment;
 
     return (
       <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
@@ -727,9 +727,9 @@ const DeviceSettings: React.FC<DeviceSettingsProps> = ({ device, onSave, onBack 
          <div className="flex overflow-x-auto no-scrollbar">
             <button onClick={() => setActiveTab('BASIC')} className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${activeTab === 'BASIC' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}>基礎信息與通訊</button>
             <button 
-              onClick={() => (device.type === EquipmentType.AssemblyEquipment || device.type === EquipmentType.TestingEquipment) && setActiveTab('MAPPING')} 
-              disabled={device.type !== EquipmentType.AssemblyEquipment && device.type !== EquipmentType.TestingEquipment}
-              className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${activeTab === 'MAPPING' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700'} ${device.type !== EquipmentType.AssemblyEquipment && device.type !== EquipmentType.TestingEquipment ? 'opacity-30 cursor-not-allowed' : ''}`}
+              onClick={() => (device.type === EquipmentType.AssemblyEquipment || device.type === EquipmentType.TestingEquipment || device.type === EquipmentType.WaterVaporEquipment) && setActiveTab('MAPPING')} 
+              disabled={device.type !== EquipmentType.AssemblyEquipment && device.type !== EquipmentType.TestingEquipment && device.type !== EquipmentType.WaterVaporEquipment}
+              className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${activeTab === 'MAPPING' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700'} ${device.type !== EquipmentType.AssemblyEquipment && device.type !== EquipmentType.TestingEquipment && device.type !== EquipmentType.WaterVaporEquipment ? 'opacity-30 cursor-not-allowed' : ''}`}
             >
               數據映射管理
             </button>

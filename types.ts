@@ -15,7 +15,8 @@ export enum EquipmentType {
   AssemblyEquipment = '組裝設備',
   AGVCarEquipment = 'AGV小車',
   CheckinEquipment = '打卡設備',
-  TestingEquipment = '檢測設備'
+  TestingEquipment = '檢測設備',
+  WaterVaporEquipment = '水氣防設備'
 }
 
 export interface Factory {

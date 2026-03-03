@@ -9,16 +9,19 @@ import DeviceSettings from './components/DeviceSettings';
 import AttendanceMaintenance from './components/AttendanceMaintenance';
 import FACAManagement from './components/FACAManagement';
 import { PageView, Equipment, ProductionLine } from './types';
-import { MOCK_EQUIPMENT } from './constants';
+import { MOCK_EQUIPMENT, MOCK_LINES } from './constants';
 
 const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentPage, setCurrentPage] = useState<PageView>('LINES');
   const [previousPage, setPreviousPage] = useState<PageView | null>(null);
   const [selectedLineId, setSelectedLineId] = useState<string | null>(null);
+  const [selectedLineData, setSelectedLineData] = useState<any>(null);
   const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null);
   
-  // Lifted Equipment State - Initially from constants
+  // Lifted State - Initially from constants
+  const [factoryInfo, setFactoryInfo] = useState({ code: 'GL', floor: '3F' });
+  const [allLines, setAllLines] = useState<ProductionLine[]>(MOCK_LINES);
   const [allEquipment, setAllEquipment] = useState<Equipment[]>(MOCK_EQUIPMENT);
 
   const handleLogin = () => {
@@ -40,8 +43,11 @@ const App: React.FC = () => {
     }
   };
 
-  const handleViewEquipment = (lineId: string) => {
+  const handleViewEquipment = (lineId: string, lineData?: any) => {
     setSelectedLineId(lineId);
+    if (lineData) {
+      setSelectedLineData(lineData);
+    }
     setCurrentPage('EQUIPMENT');
   };
 
@@ -78,12 +84,21 @@ const App: React.FC = () => {
     setCurrentPage('REGISTER');
   };
 
-  const handleUpdateFactory = (lines: ProductionLine[], equipment: Equipment[]) => {
-    // In this simplified version, LineManagement manages its own lines state,
-    // but we can update the global equipment state.
-    setAllEquipment(equipment);
-    // If we wanted to update lines globally, we'd need to lift that state too.
-    // For now, we'll let LineManagement handle its own lines.
+  const handleUpdateFactory = (newLines: ProductionLine[], newEquipment: Equipment[], info?: { code: string, floor: string }) => {
+    // Merge lines: keep existing lines, update/add new ones
+    setAllLines(prev => {
+      const otherLines = prev.filter(l => !newLines.some(nl => nl.id === l.id));
+      return [...otherLines, ...newLines];
+    });
+    
+    // Merge equipment: keep equipment from other lines, update/add equipment for the lines being updated
+    setAllEquipment(prev => {
+      const lineIds = newLines.map(l => l.id);
+      const otherLinesEquip = prev.filter(e => !lineIds.includes(e.lineId));
+      return [...otherLinesEquip, ...newEquipment];
+    });
+    
+    if (info) setFactoryInfo(info);
   };
 
   const renderContent = () => {
@@ -100,13 +115,16 @@ const App: React.FC = () => {
           <LineManagement 
             onViewEquipment={handleViewEquipment} 
             onUpdateFactory={handleUpdateFactory} 
+            lines={allLines}
             equipmentList={allEquipment}
+            factoryInfo={factoryInfo}
           />
         );
       case 'EQUIPMENT':
         return (
           <EquipmentManagement 
             lineId={selectedLineId} 
+            lineData={selectedLineData}
             equipmentList={allEquipment}
             onAddEquipment={handleAddEquipment}
             onMaintainDevice={handleMaintainDevice} 
@@ -143,7 +161,15 @@ const App: React.FC = () => {
       case 'REGISTER':
         return <RegisterPage onBack={() => setCurrentPage(previousPage || 'ATTENDANCE_MAINTENANCE')} />;
       default:
-        return <LineManagement onViewEquipment={handleViewEquipment} />;
+        return (
+          <LineManagement 
+            onViewEquipment={handleViewEquipment} 
+            onUpdateFactory={handleUpdateFactory} 
+            lines={allLines}
+            equipmentList={allEquipment}
+            factoryInfo={factoryInfo}
+          />
+        );
     }
   };
 
