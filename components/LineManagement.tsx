@@ -56,7 +56,7 @@ const LineManagement: React.FC<LineManagementProps> = ({ onViewEquipment, onUpda
     try {
       // 調用指定的 API 地址加載工廠項目
       const response = await api.post('https://localhost:7044/api/Factory/LoadProject', {
-        fileName: file.name
+        fileName: (file as any).fullName || file.name
       });
 
       if (response.data.code === 200) {
@@ -110,7 +110,7 @@ const LineManagement: React.FC<LineManagementProps> = ({ onViewEquipment, onUpda
     try {
       // 調用指定的 API 地址進行工廠導出保存
       const response = await api.post('https://localhost:7044/api/Factory/SaveProject', {
-        fileName: file.name
+        fileName: (file as any).fullName || file.name
       });
 
       if (response.data.code === 200) {
