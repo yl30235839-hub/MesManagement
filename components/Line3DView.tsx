@@ -390,7 +390,7 @@ const Line3DView: React.FC<Line3DViewProps> = ({ equipmentList, onOpenAttendance
     if (!selectedItem || selectedItem.type !== EquipmentType.CheckinEquipment) return;
 
     try {
-      const response = await api.post('https://localhost:7044/api/CheckIn/CheckInBegin', {
+      const response = await api.post('/CheckIn/CheckInBegin', {
         lineSystemName: selectedItem.lineId,
         equipmentSystemName: selectedItem.id
       });
@@ -421,7 +421,7 @@ const Line3DView: React.FC<Line3DViewProps> = ({ equipmentList, onOpenAttendance
     const fingerNo = parseInt(selectedItem.fingerprintId || '1', 10);
 
     try {
-      const response = await api.post('https://localhost:7044/api/CheckIn/CheckInEnd', {
+      const response = await api.post('/CheckIn/CheckInEnd', {
         fingerNo: fingerNo
       });
 
@@ -450,7 +450,7 @@ const Line3DView: React.FC<Line3DViewProps> = ({ equipmentList, onOpenAttendance
     const fingerNo = parseInt(selectedItem.fingerprintId || '1', 10);
 
     try {
-      const response = await api.post('https://localhost:7044/api/CheckIn/MakeUpVerification', {
+      const response = await api.post('/CheckIn/MakeUpVerification', {
         fingerNo: fingerNo
       });
 
@@ -504,7 +504,7 @@ const Line3DView: React.FC<Line3DViewProps> = ({ equipmentList, onOpenAttendance
     try {
       const finalReason = retroForm.missedReason === '其他' ? retroForm.otherReason : retroForm.missedReason;
       
-      const response = await api.post('https://localhost:7044/api/CheckIn/MakeUpRecord', {
+      const response = await api.post('/CheckIn/MakeUpRecord', {
         missedDate: retroForm.date,
         missedPeriod: retroForm.timeSlot,
         missedReason: finalReason
@@ -565,7 +565,7 @@ const Line3DView: React.FC<Line3DViewProps> = ({ equipmentList, onOpenAttendance
     setIsCancelingRetro(true);
 
     try {
-      await api.post('https://localhost:7044/api/CheckIn/MakeUpCancel', {
+      await api.post('/CheckIn/MakeUpCancel', {
         fingerNo: fingerNo
       });
     } catch (error: any) {

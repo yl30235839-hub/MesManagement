@@ -101,6 +101,12 @@ const App: React.FC = () => {
     if (info) setFactoryInfo(info);
   };
 
+  const handleResetFactory = () => {
+    setAllLines([]);
+    setAllEquipment([]);
+    setFactoryInfo({ code: '', floor: '' });
+  };
+
   const renderContent = () => {
     if (!isAuthenticated) {
       if (currentPage === 'REGISTER') {
@@ -115,6 +121,7 @@ const App: React.FC = () => {
           <LineManagement 
             onViewEquipment={handleViewEquipment} 
             onUpdateFactory={handleUpdateFactory} 
+            onResetFactory={handleResetFactory}
             lines={allLines}
             equipmentList={allEquipment}
             factoryInfo={factoryInfo}
@@ -165,6 +172,7 @@ const App: React.FC = () => {
           <LineManagement 
             onViewEquipment={handleViewEquipment} 
             onUpdateFactory={handleUpdateFactory} 
+            onResetFactory={handleResetFactory}
             lines={allLines}
             equipmentList={allEquipment}
             factoryInfo={factoryInfo}

@@ -70,7 +70,7 @@ const EquipmentManagement: React.FC<EquipmentManagementProps> = ({ lineId, lineD
   const handleSaveLineInfo = async () => {
     setIsSavingLine(true);
     try {
-      const response = await api.post('https://localhost:7044/api/Line/LineMaintenance', {
+      const response = await api.post('/Line/LineMaintenance', {
         lineName: lineInfo.name,
         description: lineInfo.description,
         lineIP: lineInfo.hostIp,
@@ -111,7 +111,7 @@ const EquipmentManagement: React.FC<EquipmentManagementProps> = ({ lineId, lineD
       const equipmentTypeKey = Object.entries(EquipmentType).find(([_, value]) => value === newEquipData.type)?.[0] || newEquipData.type;
 
       // 調用指定的 API 地址進行設備新增
-      const response = await api.post('https://localhost:7044/api/Line/CreateEquipment', {
+      const response = await api.post('/Line/CreateEquipment', {
         equipmentType: equipmentTypeKey,
         equipmentName: newEquipData.name,
         description: newEquipData.description

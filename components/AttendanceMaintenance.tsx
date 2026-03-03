@@ -200,7 +200,7 @@ const AttendanceMaintenance: React.FC<AttendanceMaintenanceProps> = ({ lineId, d
     
     try {
       if (activeView === 'RECORDS') {
-        const response = await api.post('https://localhost:7044/api/CheckIn/AttendanceDataRefresh', {
+        const response = await api.post('/CheckIn/AttendanceDataRefresh', {
           linesysname: lineId || "",
           equipmentsysname: deviceId || ""
         });
@@ -220,7 +220,7 @@ const AttendanceMaintenance: React.FC<AttendanceMaintenanceProps> = ({ lineId, d
           alert(`考勤紀錄刷新失敗: ${message}`);
         }
       } else if (activeView === 'PERSONNEL') {
-        const response = await api.post('https://localhost:7044/api/CheckIn/UserDataRefresh', {
+        const response = await api.post('/CheckIn/UserDataRefresh', {
           linesysname: lineId || '',
           equipmentsysname: deviceId || ''
         });

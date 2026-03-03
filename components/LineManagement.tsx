@@ -67,46 +67,21 @@ const LineManagement: React.FC<LineManagementProps> = ({ onViewEquipment, onUpda
           // 處理可能的嵌套結構
           const l = item.IManufacturingLine || item;
           return {
-            id: l.SystemName,
+            id: l.sysName,
             factoryId: 'F1',
-            name: l.LineName,
-            description: l.Description,
-            category: l.Line,
-            lineType: l.TypeString as LineType,
+            name: l.lineName,
+            description: l.description,
+            category: l.line,
+            lineType: l.typeString as LineType,
             status: MachineStatus.Stopped,
             outputPerHour: 0,
             targetOutput: 1000,
           };
         });
 
-        // 映射設備數據
-        const mappedEquipment: Equipment[] = [];
-        (lineSet || []).forEach((item: any) => {
-          const l = item.IManufacturingLine || item;
-          if (l.EquipmentSet) {
-            l.EquipmentSet.forEach((eItem: any) => {
-              const e = eItem.IEquipment || eItem;
-              mappedEquipment.push({
-                id: e.SystemName,
-                lineId: l.SystemName,
-                name: e.EquipmentName,
-                type: e.TypeString as EquipmentType,
-                description: e.Description,
-                status: MachineStatus.Stopped,
-                temperature: 20,
-                vibration: 0,
-                lastMaintenance: new Date().toISOString().split('T')[0],
-                sn: e.EquipmentSN,
-                factoryArea: site,
-                floor: floor
-              });
-            });
-          }
-        });
-
         // 更新狀態
         if (onUpdateFactory) {
-          onUpdateFactory(mappedLines, mappedEquipment, { code: site || 'GL', floor: floor || '3F' });
+          onUpdateFactory(mappedLines, [], { code: site || 'GL', floor: floor || '3F' });
         }
         setLocalFactoryInfo({ code: site || 'GL', floor: floor || '3F' });
         
@@ -170,11 +145,11 @@ const LineManagement: React.FC<LineManagementProps> = ({ onViewEquipment, onUpda
         const mappedEquipment: Equipment[] = (data.equipmentSet || []).map((item: any) => {
           const e = item.IEquipment || item;
           return {
-            id: e.SystemName,
+            id: e.sysName,
             lineId: lineId,
-            name: e.EquipmentName,
-            type: e.TypeString as EquipmentType,
-            description: e.Description,
+            name: e.equipmentName,
+            type: e.typeString as EquipmentType,
+            description: e.description,
             status: MachineStatus.Stopped,
             temperature: 20,
             vibration: 0,
@@ -187,10 +162,8 @@ const LineManagement: React.FC<LineManagementProps> = ({ onViewEquipment, onUpda
 
         // 更新全局設備列表
         if (onUpdateFactory) {
-          const currentLine = lines.find(l => l.id === lineId);
-          if (currentLine) {
-            onUpdateFactory([currentLine], mappedEquipment);
-          }
+          // 這裡我們只更新設備，產綫保持不變或合併
+          onUpdateFactory(lines, mappedEquipment);
         }
 
         // 跳轉並傳遞產綫詳細數據
@@ -200,10 +173,16 @@ const LineManagement: React.FC<LineManagementProps> = ({ onViewEquipment, onUpda
       }
     } catch (error: any) {
       console.error('Enter Line Error:', error);
+      
+      // 嘗試從 stack trace 中提取行號
+      const stack = error.stack || '';
+      const match = stack.match(/:(\d+):\d+/);
+      const lineNumber = match ? match[1] : '未知';
+
       if (error.message === 'Network Error') {
-        alert('通訊異常：無法連線至 https://localhost:7044。請確保後端服務已啟動並信任 SSL 憑證。');
+        alert(`通訊異常 (報錯行號: ${lineNumber})：無法連線至 https://localhost:7044。請確保後端服務已啟動並信任 SSL 憑證。`);
       } else {
-        alert(`進入過程發生錯誤: ${error.response?.data?.message || error.message}`);
+        alert(`進入過程發生錯誤 (報錯行號: ${lineNumber}): ${error.response?.data?.message || error.message}`);
       }
     } finally {
       setEnteringLineId(null);

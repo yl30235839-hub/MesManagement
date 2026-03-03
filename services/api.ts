@@ -5,7 +5,7 @@ import axios from 'axios';
 const api = axios.create({
   // Setting the baseURL to relative /api to support the local Express backend
   baseURL: '/api', 
-  timeout: 10000,
+  timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
   },

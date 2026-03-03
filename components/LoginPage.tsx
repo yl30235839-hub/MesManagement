@@ -33,7 +33,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onGoToRegister }) => {
 
     // 2. API-based login for other credentials
     try {
-      const response = await api.post('https://localhost:7044/api/Login/LoginSystem', {
+      const response = await api.post('/Login/LoginSystem', {
         userID: username,
         userPassword: password
       });
