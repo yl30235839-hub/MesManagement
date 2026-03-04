@@ -116,6 +116,10 @@ async function startServer() {
     });
   });
 
+  app.post("/api/Run/Running", (req, res) => {
+    res.json({ code: 200, message: "運行狀態已切換" });
+  });
+
   app.post("/api/CheckIn/AttendanceDataRefresh", (req, res) => {
     res.json({
       code: 200,

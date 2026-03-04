@@ -1,6 +1,7 @@
 import React, { useRef, useState, useEffect, useMemo } from 'react';
 import { Canvas, useFrame, ThreeElements } from '@react-three/fiber';
 import { OrbitControls, Text, Grid, PerspectiveCamera, Environment, ContactShadows } from '@react-three/drei';
+import { HubConnectionBuilder, HubConnection, LogLevel } from '@microsoft/signalr';
 // Fix: Correct import path from 'transparent' to 'three' to ensure standard Three.js module resolution.
 import * as THREE from 'three';
 import api from '../services/api';
@@ -349,6 +350,7 @@ interface AttendanceLog {
   time: string;
   name: string;
   employeeId: string;
+  department?: string;
   isRetroactive?: boolean;
 }
 
@@ -360,6 +362,7 @@ interface Line3DViewProps {
 
 const Line3DView: React.FC<Line3DViewProps> = ({ equipmentList, onOpenAttendance, onOpenFACA }) => {
   const [isMonitoring, setIsMonitoring] = useState(false);
+  const [isRunningLoading, setIsRunningLoading] = useState(false);
   const [selectedItem, setSelectedItem] = useState<Equipment | null>(null);
   const [isScanning, setIsScanning] = useState(false);
   const [isRetroModalOpen, setIsRetroModalOpen] = useState(false);
@@ -368,6 +371,44 @@ const Line3DView: React.FC<Line3DViewProps> = ({ equipmentList, onOpenAttendance
   const [isVerifying, setIsVerifying] = useState(false);
   const [verifiedInfo, setVerifiedInfo] = useState<{name: string, employeeId: string} | null>(null);
   const [verifyStatus, setVerifyStatus] = useState('請掃描指紋以確認身份');
+
+  const [connection, setConnection] = useState<HubConnection | null>(null);
+  const [localEquipmentList, setLocalEquipmentList] = useState<Equipment[]>(equipmentList);
+
+  useEffect(() => {
+    setLocalEquipmentList(equipmentList);
+  }, [equipmentList]);
+
+  useEffect(() => {
+    const newConnection = new HubConnectionBuilder()
+      .withUrl('/notificationHub')
+      .withAutomaticReconnect()
+      .configureLogging(LogLevel.Information)
+      .build();
+
+    setConnection(newConnection);
+  }, []);
+
+  useEffect(() => {
+    if (connection) {
+      connection.start()
+        .then(() => {
+          console.log('Connected to SignalR Hub!');
+          
+          connection.on('ReceiveNotification', (notification: any) => {
+            console.log('Received notification from SignalR:', notification);
+            // You can add logic here to update UI or show toasts
+          });
+        })
+        .catch(e => console.error('SignalR Connection failed: ', e));
+    }
+
+    return () => {
+      if (connection) {
+        connection.stop();
+      }
+    };
+  }, [connection]);
 
   const [retroForm, setRetroForm] = useState({
     date: new Date().toISOString().slice(0, 10),
@@ -379,24 +420,85 @@ const Line3DView: React.FC<Line3DViewProps> = ({ equipmentList, onOpenAttendance
   const [isSubmittingRetro, setIsSubmittingRetro] = useState(false);
   const [isCancelingRetro, setIsCancelingRetro] = useState(false);
 
+  // Removed simulated attendance logs in favor of real-time SignalR listener "CheckInNews"
   useEffect(() => {
-    let interval: number;
-    if (isScanning && selectedItem?.type === EquipmentType.CheckinEquipment) {
-      const names = ['王小明', '李大華', '張美玲', '趙鐵柱', '陳阿姨'];
-      const ids = ['V001', 'V023', 'V045', 'V099', 'V102'];
-      
-      interval = window.setInterval(() => {
-        const randomIndex = Math.floor(Math.random() * names.length);
-        const newLog: AttendanceLog = {
-          time: new Date().toLocaleTimeString(),
-          name: names[randomIndex],
-          employeeId: ids[randomIndex],
-        };
-        setAttendanceLogs(prev => [newLog, ...prev.slice(0, 19)]);
-      }, 3000);
-    }
-    return () => clearInterval(interval);
+    // Listener is now managed via handleStartClockIn and handleStopClockIn
   }, [isScanning, selectedItem]);
+
+  /**
+   * HTTP POST: Run/Running Process
+   */
+  const handleRunClick = async () => {
+    setIsRunningLoading(true);
+    try {
+      // Using the original URL from document as requested
+      const response = await api.post('https://localhost:7044/api/Run/Running', {});
+      
+      const { code, message } = response.data;
+      
+      if (code === 200) {
+        const nextMonitoringState = !isMonitoring;
+        setIsMonitoring(nextMonitoringState);
+
+        // SignalR: EquipmentStatus Listener Management
+        if (connection) {
+          if (nextMonitoringState) {
+            console.log("Registering EquipmentStatus listener...");
+            connection.on('EquipmentStatus', (data: { lineSystemName: string, equipmentSystemName: string, equipmentStatus: number }) => {
+              console.log("Received EquipmentStatus update:", data);
+              
+              setLocalEquipmentList(prevList => {
+                return prevList.map(item => {
+                  // Assuming item.lineId or some other property matches lineSystemName/equipmentSystemName
+                  // Based on typical patterns, we might need to match by name or a specific system name field
+                  // For now, let's assume item.name or item.id matches equipmentSystemName
+                  if (item.name === data.equipmentSystemName) {
+                    let newStatus: MachineStatus;
+                    switch (data.equipmentStatus) {
+                      case 1:
+                        newStatus = MachineStatus.Warning; // Idle (Yellow)
+                        break;
+                      case 2:
+                        newStatus = MachineStatus.Running; // Running (Green)
+                        break;
+                      default:
+                        newStatus = MachineStatus.Stopped; // Error (Red)
+                        break;
+                    }
+                    const updatedItem = { ...item, status: newStatus };
+                    
+                    // Also update selectedItem if it's the one being updated
+                    setSelectedItem(prevSelected => {
+                      if (prevSelected && prevSelected.id === item.id) {
+                        return updatedItem;
+                      }
+                      return prevSelected;
+                    });
+                    
+                    return updatedItem;
+                  }
+                  return item;
+                });
+              });
+            });
+          } else {
+            console.log("Unregistering EquipmentStatus listener...");
+            connection.off('EquipmentStatus');
+          }
+        }
+      } else if (code === 404) {
+        alert(`運行失敗: ${message || '找不到資源 (404)'}`);
+      } else {
+        alert(`運行失敗: ${message || '未知錯誤'}`);
+      }
+    } catch (error: any) {
+      console.error("[Run API] Error:", error);
+      const errorMsg = error.response?.data?.message || error.message || "網絡錯誤，請稍後再試。";
+      alert(`運行異常: ${errorMsg}`);
+    } finally {
+      setIsRunningLoading(false);
+    }
+  };
 
   const handleItemClick = (data: Equipment) => {
     setSelectedItem(data);
@@ -421,6 +523,18 @@ const Line3DView: React.FC<Line3DViewProps> = ({ equipmentList, onOpenAttendance
 
       if (code === 200) {
         setIsScanning(true);
+        if (connection) {
+          connection.off('CheckInNews');
+          connection.on('CheckInNews', (news: any) => {
+            const newLog: AttendanceLog = {
+              time: new Date(news.accessTime).toLocaleTimeString(),
+              name: news.userName,
+              employeeId: news.userID,
+              department: news.department
+            };
+            setAttendanceLogs(prev => [newLog, ...prev.slice(0, 19)]);
+          });
+        }
       } else {
         alert(`啟動打卡失敗: ${message}`);
       }
@@ -428,6 +542,18 @@ const Line3DView: React.FC<Line3DViewProps> = ({ equipmentList, onOpenAttendance
       console.error("[MES API] Communication Failed:", error.message);
       if (error.message === 'Network Error') {
         setIsScanning(true); 
+        if (connection) {
+          connection.off('CheckInNews');
+          connection.on('CheckInNews', (news: any) => {
+            const newLog: AttendanceLog = {
+              time: new Date(news.accessTime).toLocaleTimeString(),
+              name: news.userName,
+              employeeId: news.userID,
+              department: news.department
+            };
+            setAttendanceLogs(prev => [newLog, ...prev.slice(0, 19)]);
+          });
+        }
       } else {
         alert("通訊異常，請確認伺服器狀態。");
       }
@@ -451,12 +577,18 @@ const Line3DView: React.FC<Line3DViewProps> = ({ equipmentList, onOpenAttendance
 
       if (code === 200) {
         setIsScanning(false);
+        if (connection) {
+          connection.off('CheckInNews');
+        }
       } else {
         alert(`停止打卡失敗: ${message}`);
       }
     } catch (error: any) {
       console.error("[MES API] Communication Failed:", error.message);
       setIsScanning(false);
+      if (connection) {
+        connection.off('CheckInNews');
+      }
     }
   };
 
@@ -633,15 +765,22 @@ const Line3DView: React.FC<Line3DViewProps> = ({ equipmentList, onOpenAttendance
           
           <div className="flex space-x-3 pointer-events-auto">
             <button 
-              onClick={() => setIsMonitoring(!isMonitoring)}
+              onClick={handleRunClick}
+              disabled={isRunningLoading}
               className={`flex items-center px-6 py-3 rounded-xl font-bold text-xs shadow-xl transition-all active:scale-95 ${
-                isMonitoring 
-                  ? 'bg-red-600/90 text-white hover:bg-red-700 shadow-red-900/20' 
-                  : 'bg-green-600/90 text-white hover:bg-green-700 shadow-green-900/20'
+                isRunningLoading 
+                  ? 'bg-slate-400 text-white cursor-not-allowed'
+                  : isMonitoring 
+                    ? 'bg-red-600/90 text-white hover:bg-red-700 shadow-red-900/20' 
+                    : 'bg-green-600/90 text-white hover:bg-green-700 shadow-green-900/20'
               }`}
             >
-              {isMonitoring ? <Square size={16} className="mr-2" /> : <Play size={16} className="mr-2" />}
-              {isMonitoring ? '停止' : '運行'}
+              {isRunningLoading ? (
+                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2"></div>
+              ) : (
+                isMonitoring ? <Square size={16} className="mr-2" /> : <Play size={16} className="mr-2" />
+              )}
+              {isRunningLoading ? '處理中...' : (isMonitoring ? '停止' : '運行')}
             </button>
 
             <button 
@@ -662,7 +801,7 @@ const Line3DView: React.FC<Line3DViewProps> = ({ equipmentList, onOpenAttendance
 
         <div className="w-full h-full">
           <Canvas shadows dpr={[1, 2]}>
-            <FactoryScene equipmentList={equipmentList} onItemClick={handleItemClick} selectedId={selectedItem?.id || null} isScanning={isScanning} />
+            <FactoryScene equipmentList={localEquipmentList} onItemClick={handleItemClick} selectedId={selectedItem?.id || null} isScanning={isScanning} />
           </Canvas>
         </div>
       </div>
@@ -708,13 +847,6 @@ const Line3DView: React.FC<Line3DViewProps> = ({ equipmentList, onOpenAttendance
                   </div>
 
                   <button 
-                    onClick={() => onOpenAttendance(selectedItem?.lineId, selectedItem?.id)}
-                    className="w-full py-3 bg-blue-50 text-blue-700 border border-blue-100 rounded-xl font-bold text-xs shadow-sm hover:bg-blue-100 transition-all flex items-center justify-center group"
-                  >
-                    <Calendar size={14} className="mr-2" /> 查看考勤信息 <ChevronRight size={14} className="ml-1 group-hover:translate-x-1 transition-transform" />
-                  </button>
-
-                  <button 
                     onClick={() => setIsRetroModalOpen(true)}
                     className="w-full flex items-center justify-center py-3 bg-amber-50 text-amber-700 border border-amber-200 rounded-xl text-xs font-bold hover:bg-amber-100 transition-all shadow-sm"
                   >
@@ -752,12 +884,24 @@ const Line3DView: React.FC<Line3DViewProps> = ({ equipmentList, onOpenAttendance
                                   <Hash size={10} className="mr-1" /> {log.employeeId}
                                 </span>
                               </div>
+                              {log.department && (
+                                <div className="mt-1 text-[10px] text-slate-500 flex items-center">
+                                  <Layers size={10} className="mr-1 opacity-70" /> {log.department}
+                                </div>
+                              )}
                             </div>
                           ))}
                         </div>
                       )}
                     </div>
                   </div>
+
+                  <button 
+                    onClick={() => onOpenAttendance(selectedItem?.lineId, selectedItem?.id)}
+                    className="w-full py-3 bg-blue-50 text-blue-700 border border-blue-100 rounded-xl font-bold text-xs shadow-sm hover:bg-blue-100 transition-all flex items-center justify-center group"
+                  >
+                    <Calendar size={14} className="mr-2" /> 查看考勤信息 <ChevronRight size={14} className="ml-1 group-hover:translate-x-1 transition-transform" />
+                  </button>
                 </div>
               )}
 
