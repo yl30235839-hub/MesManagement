@@ -10,12 +10,13 @@ import {
 interface LineManagementProps {
   onViewEquipment: (lineId: string, lineData?: any) => void;
   onUpdateFactory?: (lines: ProductionLine[], equipment: Equipment[], info?: { code: string, floor: string }) => void;
+  onResetFactory?: () => void;
   lines: ProductionLine[];
   equipmentList?: Equipment[];
   factoryInfo: { code: string, floor: string };
 }
 
-const LineManagement: React.FC<LineManagementProps> = ({ onViewEquipment, onUpdateFactory, lines, equipmentList = [], factoryInfo }) => {
+const LineManagement: React.FC<LineManagementProps> = ({ onViewEquipment, onUpdateFactory, onResetFactory, lines, equipmentList = [], factoryInfo }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [enteringLineId, setEnteringLineId] = useState<string | null>(null);
   const [newLineData, setNewLineData] = useState({ 
@@ -56,7 +57,7 @@ const LineManagement: React.FC<LineManagementProps> = ({ onViewEquipment, onUpda
     try {
       // 調用指定的 API 地址加載工廠項目
       const response = await api.post('https://localhost:7044/api/Factory/LoadProject', {
-        fileName: (file as any).fullName || file.name
+        fileName: file.name
       });
 
       if (response.data.code === 200) {
@@ -110,7 +111,7 @@ const LineManagement: React.FC<LineManagementProps> = ({ onViewEquipment, onUpda
     try {
       // 調用指定的 API 地址進行工廠導出保存
       const response = await api.post('https://localhost:7044/api/Factory/SaveProject', {
-        fileName: (file as any).fullName || file.name
+        fileName: file.name
       });
 
       if (response.data.code === 200) {
@@ -144,11 +145,27 @@ const LineManagement: React.FC<LineManagementProps> = ({ onViewEquipment, onUpda
         // 映射設備數據
         const mappedEquipment: Equipment[] = (data.equipmentSet || []).map((item: any) => {
           const e = item.IEquipment || item;
+          
+          // Normalize typeString to EquipmentType enum values
+          let normalizedType = e.typeString as EquipmentType;
+          const typeStr = (e.typeString || '').toLowerCase();
+          const nameStr = (e.equipmentName || '').toLowerCase();
+          
+          if (typeStr.includes('checkin') || nameStr.includes('打卡')) {
+            normalizedType = EquipmentType.CheckinEquipment;
+          } else if (typeStr.includes('agv') || nameStr.includes('agv')) {
+            normalizedType = EquipmentType.AGVCarEquipment;
+          } else if (typeStr.includes('assembly') || nameStr.includes('組裝')) {
+            normalizedType = EquipmentType.AssemblyEquipment;
+          } else if (typeStr.includes('testing') || nameStr.includes('檢測')) {
+            normalizedType = EquipmentType.TestingEquipment;
+          }
+
           return {
             id: e.sysName,
             lineId: lineId,
             name: e.equipmentName,
-            type: e.typeString as EquipmentType,
+            type: normalizedType,
             description: e.description,
             status: MachineStatus.Stopped,
             temperature: 20,

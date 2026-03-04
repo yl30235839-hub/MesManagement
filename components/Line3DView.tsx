@@ -200,22 +200,39 @@ const FingerprintModel: React.FC<ItemProps> = ({ data, isSelected, onClick, posi
   
   return (
     <group position={position} onClick={(e: any) => { e.stopPropagation(); onClick(data); }}>
-      <mesh position={[0, 0.7, 0]} onPointerOver={() => { setHovered(true); document.body.style.cursor = 'pointer'; }} onPointerOut={() => { setHovered(false); document.body.style.cursor = 'auto'; }}>
-        <boxGeometry args={[0.6, 1.4, 0.6]} />
-        <meshStandardMaterial color="#1e293b" metalness={0.9} roughness={0.1} />
-      </mesh>
-      <mesh position={[0, 1.45, 0.1]} rotation={[-Math.PI/4, 0, 0]}>
-        <boxGeometry args={[0.8, 0.1, 0.6]} />
-        <meshStandardMaterial color={isSelected ? '#3b82f6' : "#334155"} />
-      </mesh>
-      <mesh position={[0, 1.5, 0.2]} rotation={[-Math.PI/4, 0, 0]}>
-        <planeGeometry args={[0.5, 0.3]} />
-        <meshBasicMaterial color={isGlobalScanning ? "#3b82f6" : "#1e293b"} />
-      </mesh>
+      <group 
+        onPointerOver={() => { setHovered(true); document.body.style.cursor = 'pointer'; }} 
+        onPointerOut={() => { setHovered(false); document.body.style.cursor = 'auto'; }}
+      >
+        <mesh position={[0, 0.7, 0]}>
+          <boxGeometry args={[0.6, 1.4, 0.6]} />
+          <meshStandardMaterial color={isSelected ? "#3b82f6" : "#1e293b"} metalness={0.9} roughness={0.1} />
+        </mesh>
+        <mesh position={[0, 1.45, 0.1]} rotation={[-Math.PI/4, 0, 0]}>
+          <boxGeometry args={[0.8, 0.1, 0.6]} />
+          <meshStandardMaterial color={isSelected ? '#60a5fa' : "#334155"} />
+        </mesh>
+        <mesh position={[0, 1.5, 0.2]} rotation={[-Math.PI/4, 0, 0]}>
+          <planeGeometry args={[0.5, 0.3]} />
+          <meshBasicMaterial color={isGlobalScanning ? "#3b82f6" : "#1e293b"} />
+        </mesh>
+      </group>
+
+      {isSelected && (
+        <mesh position={[0, 0.05, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+          <ringGeometry args={[0.8, 1.0, 32]} />
+          <meshBasicMaterial color="#3b82f6" transparent opacity={0.6} side={THREE.DoubleSide} />
+        </mesh>
+      )}
+
       {isGlobalScanning && (
         <pointLight ref={lightRef} position={[0, 1.6, 0.3]} intensity={1.5} color="#3b82f6" distance={3} />
       )}
-      <Text position={[0, 2, 0]} fontSize={0.2} color="black" anchorX="center">SCAN STATION</Text>
+      
+      <Text position={[0, 2.2, 0]} fontSize={0.25} color="#1e293b" anchorX="center" anchorY="middle">
+        {data.name}
+      </Text>
+      <Text position={[0, 1.9, 0]} fontSize={0.15} color="#64748b" anchorX="center">SCAN STATION</Text>
     </group>
   );
 }
@@ -304,10 +321,15 @@ const FactoryScene: React.FC<{
             const x = (colIndex * columnSpacing) - ((items.length - 1) * columnSpacing / 2);
             const position: [number, number, number] = [x, 0, 0];
 
-            if (item.type === EquipmentType.CheckinEquipment) {
+            // Robust identification of Checkin Equipment
+            const isCheckin = item.type === EquipmentType.CheckinEquipment || 
+                             item.name.includes('打卡') || 
+                             item.id.toLowerCase().includes('checkin');
+
+            if (isCheckin) {
               return <FingerprintModel key={item.id} data={item} isSelected={selectedId === item.id} onClick={onItemClick} position={position} isGlobalScanning={isScanning} />;
             }
-            if (item.type === EquipmentType.AGVCarEquipment) {
+            if (item.type === EquipmentType.AGVCarEquipment || item.name.toLowerCase().includes('agv')) {
               return <AGVModel key={item.id} data={item} isSelected={selectedId === item.id} onClick={onItemClick} position={position} />;
             }
             return <MachineModel key={item.id} data={item} isSelected={selectedId === item.id} onClick={onItemClick} position={position} />;
@@ -663,7 +685,8 @@ const Line3DView: React.FC<Line3DViewProps> = ({ equipmentList, onOpenAttendance
                 <p className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded mt-2">Line: {selectedItem.lineId}</p>
               </div>
 
-              {selectedItem.type === EquipmentType.CheckinEquipment && (
+              {/* Robust identification for side panel display */}
+              {(selectedItem.type === EquipmentType.CheckinEquipment || selectedItem.name.includes('打卡')) && (
                 <div className="space-y-4">
                   <div className="grid grid-cols-2 gap-3">
                     <button 
@@ -680,9 +703,16 @@ const Line3DView: React.FC<Line3DViewProps> = ({ equipmentList, onOpenAttendance
                       className={`flex items-center justify-center py-3 rounded-xl text-xs font-bold transition-all shadow-sm
                         ${!isScanning ? 'bg-slate-100 text-slate-400' : 'bg-red-50 text-red-600 border border-red-100 hover:bg-red-100'}`}
                     >
-                      <Square size={14} className="mr-1.5" /> 停止打卡
+                      <Square size={14} className="mr-1.5" /> 結束打卡
                     </button>
                   </div>
+
+                  <button 
+                    onClick={() => onOpenAttendance(selectedItem?.lineId, selectedItem?.id)}
+                    className="w-full py-3 bg-blue-50 text-blue-700 border border-blue-100 rounded-xl font-bold text-xs shadow-sm hover:bg-blue-100 transition-all flex items-center justify-center group"
+                  >
+                    <Calendar size={14} className="mr-2" /> 查看考勤信息 <ChevronRight size={14} className="ml-1 group-hover:translate-x-1 transition-transform" />
+                  </button>
 
                   <button 
                     onClick={() => setIsRetroModalOpen(true)}
@@ -728,17 +758,10 @@ const Line3DView: React.FC<Line3DViewProps> = ({ equipmentList, onOpenAttendance
                       )}
                     </div>
                   </div>
-                  
-                  <button 
-                    onClick={() => onOpenAttendance(selectedItem?.lineId, selectedItem?.id)}
-                    className="w-full py-3 bg-slate-900 text-white rounded-xl font-bold text-xs shadow-lg hover:bg-slate-800 transition-all flex items-center justify-center group"
-                  >
-                    <Calendar size={14} className="mr-2" /> 查看完整報表 <ChevronRight size={14} className="ml-1 group-hover:translate-x-1 transition-transform" />
-                  </button>
                 </div>
               )}
 
-              {selectedItem.type !== EquipmentType.CheckinEquipment && (
+              {(selectedItem.type !== EquipmentType.CheckinEquipment && !selectedItem.name.includes('打卡')) && (
                 <div className="space-y-4">
                   <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">運行狀態</p>
