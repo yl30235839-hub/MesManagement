@@ -10,7 +10,7 @@ import {
   Play, Square, User, Hash, CheckCircle2, ClipboardEdit, Save, AlertCircle,
   Scan, ShieldCheck, FileWarning, MessageSquare, Edit3, Fingerprint
 } from 'lucide-react';
-import { Equipment, MachineStatus, EquipmentType } from '../types';
+import { Equipment, MachineStatus, EquipmentType, FACAPendingItem, FACATipsMessage, AlarmRecordModel } from '../types';
 
 // Fix: Extend the JSX namespace to include Three.js intrinsic elements provided by React Three Fiber.
 declare global {
@@ -358,9 +358,17 @@ interface Line3DViewProps {
   equipmentList: Equipment[];
   onOpenAttendance: (lineId?: string, deviceId?: string) => void;
   onOpenFACA: () => void;
+  facaPendingItems: FACAPendingItem[];
+  setFacaPendingItems: React.Dispatch<React.SetStateAction<FACAPendingItem[]>>;
 }
 
-const Line3DView: React.FC<Line3DViewProps> = ({ equipmentList, onOpenAttendance, onOpenFACA }) => {
+const Line3DView: React.FC<Line3DViewProps> = ({ 
+  equipmentList, 
+  onOpenAttendance, 
+  onOpenFACA,
+  facaPendingItems,
+  setFacaPendingItems
+}) => {
   const [isMonitoring, setIsMonitoring] = useState(false);
   const [isRunningLoading, setIsRunningLoading] = useState(false);
   const [selectedItem, setSelectedItem] = useState<Equipment | null>(null);
@@ -484,6 +492,30 @@ const Line3DView: React.FC<Line3DViewProps> = ({ equipmentList, onOpenAttendance
           } else {
             console.log("Unregistering EquipmentStatus listener...");
             connection.off('EquipmentStatus');
+          }
+
+          // SignalR: FACATips Listener Management
+          if (nextMonitoringState) {
+            console.log("Registering FACATips listener...");
+            connection.on('FACATips', (data: FACATipsMessage) => {
+              console.log("Received FACATips update:", data);
+              
+              const newPendingItems: FACAPendingItem[] = data.alarmNew.map((alarm, index) => ({
+                id: `F-${Date.now()}-${index}`,
+                date: new Date(alarm.AlarmStartTime).toISOString().slice(0, 10),
+                startTime: new Date(alarm.AlarmStartTime).toLocaleTimeString(),
+                endTime: new Date(alarm.AlarmEndTime).toLocaleTimeString(),
+                machineName: data.equipmentSystemName,
+                alarmCode: alarm.AlarmCode,
+                alarmContent: alarm.AlarmNote,
+                status: 'AWAITING'
+              }));
+
+              setFacaPendingItems(prev => [...prev, ...newPendingItems]);
+            });
+          } else {
+            console.log("Unregistering FACATips listener...");
+            connection.off('FACATips');
           }
         }
       } else if (code === 404) {
@@ -743,6 +775,26 @@ const Line3DView: React.FC<Line3DViewProps> = ({ equipmentList, onOpenAttendance
 
   return (
     <div className="bg-slate-900 relative flex h-full w-full overflow-hidden">
+      {/* FACA Freeze Overlay */}
+      {facaPendingItems.length > 0 && (
+        <div className="absolute inset-0 z-[100] bg-slate-900/80 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center animate-in fade-in duration-500">
+          <div className="w-24 h-24 bg-red-500/20 rounded-full flex items-center justify-center mb-6 animate-pulse">
+            <AlertCircle size={48} className="text-red-500" />
+          </div>
+          <h2 className="text-3xl font-bold text-white mb-4">系統已凍結：檢測到設備異常</h2>
+          <p className="text-slate-300 max-w-md mb-8 leading-relaxed">
+            目前有 <span className="text-red-400 font-bold">{facaPendingItems.length}</span> 項待處理的 FACA 分析。
+            為了生產安全，界面已暫時鎖定。請立即前往 FACA 管理界面完成故障分析與改善措施提交。
+          </p>
+          <button 
+            onClick={onOpenFACA}
+            className="px-8 py-4 bg-red-600 hover:bg-red-700 text-white rounded-2xl font-bold text-lg shadow-2xl shadow-red-500/20 transition-all active:scale-95 flex items-center"
+          >
+            <FileWarning size={24} className="mr-3" /> 前往處理 FACA 異常
+          </button>
+        </div>
+      )}
+
       <div className="flex-1 h-full w-full relative">
         <div className="absolute top-6 left-6 z-10 space-y-3 pointer-events-none">
           <div className="bg-slate-950/80 backdrop-blur-md p-6 rounded-2xl border border-slate-800 shadow-2xl">

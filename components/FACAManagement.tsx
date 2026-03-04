@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { FACAPendingItem } from '../types';
 import { 
   ArrowLeft, FileWarning, Search, Filter, 
   Clock, Database, User, Save, CheckCircle, 
@@ -9,17 +10,6 @@ import {
   Package, PlusCircle, XCircle, Info, X, IdCard, Building2,
   MessageSquare, Sparkles
 } from 'lucide-react';
-
-interface FACAPendingItem {
-  id: string;
-  date: string;
-  startTime: string;
-  endTime: string;
-  machineName: string;
-  alarmCode: string;
-  alarmContent: string;
-  status: 'AWAITING' | 'ANALYZING' | 'COMPLETED';
-}
 
 interface FACASolution {
   id: string;
@@ -43,12 +33,6 @@ interface PartRecord {
     model: string;
   };
 }
-
-const MOCK_PENDING: FACAPendingItem[] = [
-  { id: 'F-20240320-001', date: '2024-03-20', startTime: '09:45:12', endTime: '10:15:30', machineName: 'Robotic Arm Beta', alarmCode: 'E-042', alarmContent: '伺服電機過載報警：檢測到電流持續超過額定值 120%，觸發保護停機。', status: 'AWAITING' },
-  { id: 'F-20240320-002', date: '2024-03-20', startTime: '11:20:00', endTime: '11:25:00', machineName: 'CNC Milling Unit A', alarmCode: 'W-015', alarmContent: '切削液壓力低：管路壓力低於 0.2MPa，可能存在泵浦故障或濾網堵塞。', status: 'AWAITING' },
-  { id: 'F-20240319-015', date: '2024-03-19', startTime: '14:30:00', endTime: '15:45:00', machineName: 'Assembly Line A', alarmCode: 'S-001', alarmContent: '緊急停止觸發：安全迴路斷開，外部緊急停止按鈕被按下或安全開關異常。', status: 'ANALYZING' },
-];
 
 const MOCK_FACA_SOLUTIONS: FACASolution[] = [
   { id: 'S-01', category: '電氣故障', alarmCodeRef: 'E-042', description: '電機電流瞬時峰值超過額定值', reason: '負載過重或抱閘未完全釋放', action: '檢查傳動機構潤滑，確認抱閘線圈電壓正常。' },
@@ -77,10 +61,11 @@ const formatNow = () => {
 
 interface FACAManagementProps {
   onBack: () => void;
+  pendingItems: FACAPendingItem[];
+  setPendingItems: React.Dispatch<React.SetStateAction<FACAPendingItem[]>>;
 }
 
-const FACAManagement: React.FC<FACAManagementProps> = ({ onBack }) => {
-  const [pendingItems, setPendingItems] = useState<FACAPendingItem[]>(MOCK_PENDING);
+const FACAManagement: React.FC<FACAManagementProps> = ({ onBack, pendingItems, setPendingItems }) => {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [appliedSolutionId, setAppliedSolutionId] = useState<string | null>(null);

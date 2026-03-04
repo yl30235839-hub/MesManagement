@@ -58,3 +58,31 @@ export interface Equipment {
 }
 
 export type PageView = 'LOGIN' | 'REGISTER' | 'LINES' | 'EQUIPMENT' | '3D_VIEW' | 'DEVICE_SETTINGS' | 'ATTENDANCE_MAINTENANCE' | 'FACA_MANAGEMENT';
+
+export interface AlarmRecordModel {
+  AlarmCode: string;
+  AlarmNote: string;
+  AlarmSolution: string;
+  AlarmStartTime: string;
+  AlarmEndTime: string;
+  AlarmDuration: number;
+  Maintenance: number;
+  MachineNO: string;
+}
+
+export interface FACATipsMessage {
+  lineSystemName: string;
+  equipmentSystemName: string;
+  alarmNew: AlarmRecordModel[];
+}
+
+export interface FACAPendingItem {
+  id: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  machineName: string;
+  alarmCode: string;
+  alarmContent: string;
+  status: 'AWAITING' | 'ANALYZING' | 'COMPLETED';
+}

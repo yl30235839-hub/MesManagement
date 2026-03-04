@@ -8,7 +8,7 @@ import Line3DView from './components/Line3DView';
 import DeviceSettings from './components/DeviceSettings';
 import AttendanceMaintenance from './components/AttendanceMaintenance';
 import FACAManagement from './components/FACAManagement';
-import { PageView, Equipment, ProductionLine } from './types';
+import { PageView, Equipment, ProductionLine, FACAPendingItem } from './types';
 import { MOCK_EQUIPMENT, MOCK_LINES } from './constants';
 
 const App: React.FC = () => {
@@ -23,6 +23,7 @@ const App: React.FC = () => {
   const [factoryInfo, setFactoryInfo] = useState({ code: 'GL', floor: '3F' });
   const [allLines, setAllLines] = useState<ProductionLine[]>(MOCK_LINES);
   const [allEquipment, setAllEquipment] = useState<Equipment[]>(MOCK_EQUIPMENT);
+  const [facaPendingItems, setFacaPendingItems] = useState<FACAPendingItem[]>([]);
 
   const handleLogin = () => {
     setIsAuthenticated(true);
@@ -152,6 +153,8 @@ const App: React.FC = () => {
             equipmentList={allEquipment}
             onOpenAttendance={handleGoToAttendance} 
             onOpenFACA={handleGoToFACA} 
+            facaPendingItems={facaPendingItems}
+            setFacaPendingItems={setFacaPendingItems}
           />
         );
       case 'ATTENDANCE_MAINTENANCE':
@@ -164,7 +167,13 @@ const App: React.FC = () => {
           />
         );
       case 'FACA_MANAGEMENT':
-        return <FACAManagement onBack={() => setCurrentPage('3D_VIEW')} />;
+        return (
+          <FACAManagement 
+            onBack={() => setCurrentPage('3D_VIEW')} 
+            pendingItems={facaPendingItems}
+            setPendingItems={setFacaPendingItems}
+          />
+        );
       case 'REGISTER':
         return <RegisterPage onBack={() => setCurrentPage(previousPage || 'ATTENDANCE_MAINTENANCE')} />;
       default:
