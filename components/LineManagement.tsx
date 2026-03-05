@@ -159,6 +159,8 @@ const LineManagement: React.FC<LineManagementProps> = ({ onViewEquipment, onUpda
             normalizedType = EquipmentType.AssemblyEquipment;
           } else if (typeStr.includes('testing') || nameStr.includes('檢測')) {
             normalizedType = EquipmentType.TestingEquipment;
+          } else if (typeStr.includes('watervapor') || nameStr.includes('水氣防')) {
+            normalizedType = EquipmentType.WaterVaporEquipment;
           }
 
           return {
