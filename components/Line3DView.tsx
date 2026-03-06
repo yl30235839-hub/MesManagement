@@ -546,7 +546,7 @@ const Line3DView: React.FC<Line3DViewProps> = ({
     if (!selectedItem || selectedItem.type !== EquipmentType.CheckinEquipment) return;
 
     try {
-      const response = await api.post('/CheckIn/CheckInBegin', {
+      const response = await api.post('https://localhost:7044/api/CheckIn/CheckInBegin', {
         lineSystemName: selectedItem.lineId,
         equipmentSystemName: selectedItem.id
       });
@@ -598,11 +598,10 @@ const Line3DView: React.FC<Line3DViewProps> = ({
   const handleStopClockIn = async () => {
     if (!selectedItem || selectedItem.type !== EquipmentType.CheckinEquipment) return;
 
-    const fingerNo = parseInt(selectedItem.fingerprintId || '1', 10);
-
     try {
-      const response = await api.post('/CheckIn/CheckInEnd', {
-        fingerNo: fingerNo
+      const response = await api.post('https://localhost:7044/api/CheckIn/CheckInEnd', {
+        lineSystemName: selectedItem.lineId,
+        equipmentSystemName: selectedItem.id
       });
 
       const { code, message } = response.data;
@@ -636,16 +635,17 @@ const Line3DView: React.FC<Line3DViewProps> = ({
     const fingerNo = parseInt(selectedItem.fingerprintId || '1', 10);
 
     try {
-      const response = await api.post('/CheckIn/MakeUpVerification', {
-        fingerNo: fingerNo
+      const response = await api.post('https://localhost:7044/api/CheckIn/MakeUpVerification', {
+        lineSystemName: selectedItem.lineId,
+        equipmentSystemName: selectedItem.id
       });
 
       const { code, message, data } = response.data;
 
       if (code === 200 && data) {
         setVerifiedInfo({
-          name: data.name,
-          employeeId: data.employeeId
+          name: data.userName,
+          employeeId: data.userID
         });
         setVerifyStatus('身份驗證成功');
       } else {
@@ -690,7 +690,7 @@ const Line3DView: React.FC<Line3DViewProps> = ({
     try {
       const finalReason = retroForm.missedReason === '其他' ? retroForm.otherReason : retroForm.missedReason;
       
-      const response = await api.post('/CheckIn/MakeUpRecord', {
+      const response = await api.post('https://localhost:7044/api/CheckIn/MakeUpRecord', {
         missedDate: retroForm.date,
         missedPeriod: retroForm.timeSlot,
         missedReason: finalReason
@@ -751,8 +751,9 @@ const Line3DView: React.FC<Line3DViewProps> = ({
     setIsCancelingRetro(true);
 
     try {
-      await api.post('/CheckIn/MakeUpCancel', {
-        fingerNo: fingerNo
+      await api.post('https://localhost:7044/api/CheckIn/MakeUpCancel', {
+        lineSystemName: selectedItem.lineId,
+        equipmentSystemName: selectedItem.id
       });
     } catch (error: any) {
       console.error("[MES API] Cancel Supplemental Communication Failed:", error.message);

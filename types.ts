@@ -57,6 +57,45 @@ export interface Equipment {
   fingerprintId?: string;
 }
 
+export interface Personnel {
+  id: string;
+  name: string;
+  employeeId: string;
+  department: string;
+  position: string;
+  techLevel: string;
+  hasFingerprint1: boolean;
+  hasFingerprint2: boolean;
+  extraPermissions: {
+    keyPersonnel: boolean;
+    mobilePersonnel: boolean;
+  };
+}
+
+export interface UserData {
+  Site: string;
+  Floor: string;
+  Product: string;
+  Line: string;
+  Process: string;
+  UserName: string;
+  UserID: string;
+  UserPassword?: string;
+  Department: string;
+  UserJobName: string;
+  UserLevel: string;
+  KeyPersonnel: boolean;
+  MobilePersonnel: boolean;
+  HostSoftware: boolean;
+  EquipmentOp: boolean;
+  ComparisonResults?: string;
+  Permissions: string;
+  FingerprintInfoA?: any;
+  FingerprintInfoB?: any;
+  CanBeRecorded?: boolean;
+  FingerExist?: boolean;
+}
+
 export type PageView = 'LOGIN' | 'REGISTER' | 'LINES' | 'EQUIPMENT' | '3D_VIEW' | 'DEVICE_SETTINGS' | 'ATTENDANCE_MAINTENANCE' | 'FACA_MANAGEMENT';
 
 export interface AlarmRecordModel {

@@ -1,6 +1,7 @@
 import React, { useState, useRef, useMemo } from 'react';
 import api from '../services/api';
 import RegisterPage from './RegisterPage';
+import { Personnel, UserData } from '../types';
 import { 
   ArrowLeft, Search, Filter, Download, UserCheck, 
   UserX, Clock, Edit3, MoreVertical, ChevronLeft, 
@@ -19,21 +20,6 @@ interface AttendanceRecord {
   lastCheckIn: string;
   status: 'NORMAL' | 'LATE' | 'ABSENT' | 'LEAVE';
   totalCheckIns: number;
-}
-
-interface Personnel {
-  id: string;
-  name: string;
-  employeeId: string;
-  department: string;
-  position: string;
-  techLevel: string;
-  hasFingerprint1: boolean;
-  hasFingerprint2: boolean;
-  extraPermissions: {
-    keyPersonnel: boolean;
-    mobilePersonnel: boolean;
-  };
 }
 
 interface StatRow {
@@ -56,66 +42,28 @@ const MOCK_RECORDS: AttendanceRecord[] = [
   { id: '5', name: '趙六', employeeId: 'V056', department: '機構', lastCheckIn: '2024-03-15 08:01:00', status: 'LEAVE', totalCheckIns: 15 },
 ];
 
-const INITIAL_PERSONNEL: Personnel[] = [
-  { 
-    id: 'p1', 
-    name: '王大錘', 
-    employeeId: 'V001', 
-    department: '機構', 
-    position: '工程師', 
-    techLevel: '3級(Level A)', 
-    hasFingerprint1: true,
-    hasFingerprint2: true,
-    extraPermissions: { keyPersonnel: true, mobilePersonnel: false } 
-  },
-  { 
-    id: 'p2', 
-    name: '李小美', 
-    employeeId: 'V042', 
-    department: '電控', 
-    position: '高級工程師', 
-    techLevel: '開發', 
-    hasFingerprint1: true,
-    hasFingerprint2: false,
-    extraPermissions: { keyPersonnel: true, mobilePersonnel: true } 
-  },
-  { 
-    id: 'p3', 
-    name: '張三', 
-    employeeId: 'V089', 
-    department: '視覺', 
-    position: '技術員', 
-    techLevel: '2級(Level B)', 
-    hasFingerprint1: false,
-    hasFingerprint2: false,
-    extraPermissions: { keyPersonnel: false, mobilePersonnel: true } 
-  },
-  { 
-    id: 'p4', 
-    name: '李四', 
-    employeeId: 'V112', 
-    department: '導入', 
-    position: '實習生', 
-    techLevel: '1級(Level C)', 
-    hasFingerprint1: true,
-    hasFingerprint2: true,
-    extraPermissions: { keyPersonnel: false, mobilePersonnel: false } 
-  },
-];
-
 interface AttendanceMaintenanceProps {
   lineId?: string | null;
   deviceId?: string | null;
+  personnelList: Personnel[];
+  setPersonnelList: React.Dispatch<React.SetStateAction<Personnel[]>>;
   onBack: () => void;
   onGoToRegister: () => void;
 }
 
-const AttendanceMaintenance: React.FC<AttendanceMaintenanceProps> = ({ lineId, deviceId, onBack, onGoToRegister }) => {
+const AttendanceMaintenance: React.FC<AttendanceMaintenanceProps> = ({ 
+  lineId, 
+  deviceId, 
+  personnelList,
+  setPersonnelList,
+  onBack, 
+  onGoToRegister 
+}) => {
   const [activeView, setActiveView] = useState<'RECORDS' | 'PERSONNEL' | 'STATISTICS'>('RECORDS');
   const [searchTerm, setSearchTerm] = useState('');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
-  const [personnelList, setPersonnelList] = useState<Personnel[]>(INITIAL_PERSONNEL);
+  const [isAddingUser, setIsAddingUser] = useState(false);
   const [records, setRecords] = useState<AttendanceRecord[]>(MOCK_RECORDS);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -132,6 +80,7 @@ const AttendanceMaintenance: React.FC<AttendanceMaintenanceProps> = ({ lineId, d
   // Edit User Modal State
   const [editingPerson, setEditingPerson] = useState<Personnel | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isEditingId, setIsEditingId] = useState<string | null>(null);
 
   // Generate Time Periods based on Shift
   const statisticsData = useMemo(() => {
@@ -200,9 +149,9 @@ const AttendanceMaintenance: React.FC<AttendanceMaintenanceProps> = ({ lineId, d
     
     try {
       if (activeView === 'RECORDS') {
-        const response = await api.post('/CheckIn/AttendanceDataRefresh', {
-          linesysname: lineId || "",
-          equipmentsysname: deviceId || ""
+        const response = await api.post('https://localhost:7044/api/CheckIn/AttendanceDataRefresh', {
+          lineSystemName: lineId || "",
+          equipmentSystemName: deviceId || ""
         });
         const { code, message, data } = response.data;
         if (code === 200 && Array.isArray(data)) {
@@ -220,9 +169,9 @@ const AttendanceMaintenance: React.FC<AttendanceMaintenanceProps> = ({ lineId, d
           alert(`考勤紀錄刷新失敗: ${message}`);
         }
       } else if (activeView === 'PERSONNEL') {
-        const response = await api.post('/CheckIn/UserDataRefresh', {
-          linesysname: lineId || '',
-          equipmentsysname: deviceId || ''
+        const response = await api.post('https://localhost:7044/api/CheckIn/UserDataRefresh', {
+          lineSystemName: lineId || '',
+          equipmentSystemName: deviceId || ''
         });
         const { code, message, data } = response.data;
         if (code === 200 && Array.isArray(data)) {
@@ -260,7 +209,7 @@ const AttendanceMaintenance: React.FC<AttendanceMaintenanceProps> = ({ lineId, d
     fileInputRef.current?.click();
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     const fileName = file.name.toLowerCase();
@@ -268,26 +217,45 @@ const AttendanceMaintenance: React.FC<AttendanceMaintenanceProps> = ({ lineId, d
       alert('請上傳正確的 Excel 表格文件 (.xlsx, .xls)');
       return;
     }
+
     setIsImporting(true);
-    setTimeout(() => {
-      const importedData: Personnel[] = [
-        { 
-          id: `p-imp-${Date.now()}-1`, 
-          name: '陳阿輝', 
-          employeeId: 'V201', 
-          department: '視覺', 
-          position: '技術專家', 
-          techLevel: '開發', 
-          hasFingerprint1: true,
-          hasFingerprint2: false,
-          extraPermissions: { keyPersonnel: true, mobilePersonnel: false } 
-        }
-      ];
-      setPersonnelList(prev => [...prev, ...importedData]);
+    try {
+      const response = await api.post('https://localhost:7044/api/CheckIn/BatchAddUser', {
+        lineSystemName: lineId || "",
+        equipmentSystemName: deviceId || "",
+        fileLocation: (file as any).fullName || (file as any).path || (file as any).webkitRelativePath || file.name
+      });
+
+      const { code, message, data } = response.data;
+
+      if (code === 200 && Array.isArray(data)) {
+        const importedData: Personnel[] = data.map((item: any) => ({
+          id: item.UserID || `p-imp-${Date.now()}-${Math.random()}`,
+          name: item.UserName || '未知',
+          employeeId: item.UserID || 'N/A',
+          department: item.Department || '未知',
+          position: item.UserJobName || '未知',
+          techLevel: item.UserLevel || 'N/A',
+          hasFingerprint1: !!item.FingerprintInfoA && (Array.isArray(item.FingerprintInfoA) ? item.FingerprintInfoA.length > 0 : true),
+          hasFingerprint2: !!item.FingerprintInfoB && (Array.isArray(item.FingerprintInfoB) ? item.FingerprintInfoB.length > 0 : true),
+          extraPermissions: {
+            keyPersonnel: !!item.KeyPersonnel,
+            mobilePersonnel: !!item.MobilePersonnel
+          }
+        }));
+
+        setPersonnelList(prev => [...prev, ...importedData]);
+        alert(`成功導入 ${importedData.length} 位人員信息！`);
+      } else {
+        alert(`批量導入失敗: ${message || '未知錯誤'} (代碼: ${code})`);
+      }
+    } catch (error: any) {
+      const errorMsg = error.response?.data?.message || error.message || '網絡錯誤';
+      alert(`批量導入請求異常: ${errorMsg}`);
+    } finally {
       setIsImporting(false);
-      alert(`成功導入 ${importedData.length} 位人員信息！`);
       if (fileInputRef.current) fileInputRef.current.value = '';
-    }, 1500);
+    }
   };
 
   const handleDeletePersonnel = (id: string) => {
@@ -296,9 +264,44 @@ const AttendanceMaintenance: React.FC<AttendanceMaintenanceProps> = ({ lineId, d
     }
   };
 
-  const handleOpenEditModal = (person: Personnel) => {
-    setEditingPerson(person);
-    setIsEditModalOpen(true);
+  const handleOpenEditModal = async (person: Personnel) => {
+    setIsEditingId(person.id);
+    try {
+      const response = await api.post('https://localhost:7044/api/CheckIn/EditUser', {
+        lineSystemName: lineId || "",
+        equipmentSystemName: deviceId || "",
+        userId: person.employeeId
+      });
+      
+      const { code, message, data } = response.data;
+      
+      if (code === 200 && data?.user) {
+        const user = data.user;
+        const mappedPerson: Personnel = {
+          id: user.UserID,
+          name: user.UserName,
+          employeeId: user.UserID,
+          department: user.Department,
+          position: user.UserJobName,
+          techLevel: user.UserLevel,
+          hasFingerprint1: !!(user.FingerprintInfoA && (Array.isArray(user.FingerprintInfoA) ? user.FingerprintInfoA.length > 0 : true)),
+          hasFingerprint2: !!(user.FingerprintInfoB && (Array.isArray(user.FingerprintInfoB) ? user.FingerprintInfoB.length > 0 : true)),
+          extraPermissions: {
+            keyPersonnel: !!user.KeyPersonnel,
+            mobilePersonnel: !!user.MobilePersonnel,
+          }
+        };
+        setEditingPerson(mappedPerson);
+        setIsEditModalOpen(true);
+      } else {
+        alert(`編輯請求失敗: ${message || '未知錯誤'} (代碼: ${code})`);
+      }
+    } catch (error: any) {
+      const errorMsg = error.response?.data?.message || error.message || '網絡錯誤';
+      alert(`請求異常: ${errorMsg}`);
+    } finally {
+      setIsEditingId(null);
+    }
   };
 
   const handleSaveEdit = (updatedData: any) => {
@@ -319,6 +322,33 @@ const AttendanceMaintenance: React.FC<AttendanceMaintenanceProps> = ({ lineId, d
         : p
     ));
     alert('用戶信息更新成功！');
+  };
+
+  const handleAddUser = async () => {
+    setIsAddingUser(true);
+    try {
+      const response = await api.post('https://localhost:7044/api/CheckIn/EnterAddUser', {
+        lineSystemName: lineId || "",
+        equipmentSystemName: deviceId || ""
+      });
+      
+      const { code, message } = response.data;
+      
+      if (code === 200) {
+        // 成功處理：執行原有邏輯
+        onGoToRegister();
+      } else {
+        // 錯誤處理：展示 API 返回的錯誤信息
+        alert(`新增人員失敗: ${message || '未知錯誤'} (代碼: ${code})`);
+      }
+    } catch (error: any) {
+      // 錯誤處理：捕獲請求異常
+      const errorMsg = error.response?.data?.message || error.message || '網絡錯誤';
+      alert(`請求異常: ${errorMsg}`);
+    } finally {
+      // 重置 Loading 狀態
+      setIsAddingUser(false);
+    }
   };
 
   return (
@@ -366,10 +396,20 @@ const AttendanceMaintenance: React.FC<AttendanceMaintenanceProps> = ({ lineId, d
                 {isImporting ? '導入中...' : '批量導入'}
               </button>
               <button 
-                onClick={onGoToRegister}
-                className="flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors shadow-md shadow-blue-200"
+                onClick={handleAddUser}
+                disabled={isAddingUser}
+                className="flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors shadow-md shadow-blue-200 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <UserPlus size={16} className="mr-2" /> 新增人員
+                {isAddingUser ? (
+                  <>
+                    <RefreshCw size={16} className="mr-2 animate-spin" />
+                    處理中...
+                  </>
+                ) : (
+                  <>
+                    <UserPlus size={16} className="mr-2" /> 新增人員
+                  </>
+                )}
               </button>
             </>
           )}
@@ -670,9 +710,17 @@ const AttendanceMaintenance: React.FC<AttendanceMaintenanceProps> = ({ lineId, d
                           <div className="flex justify-end space-x-2">
                             <button 
                               onClick={() => handleOpenEditModal(person)}
-                              className="p-2 text-slate-400 hover:text-blue-600 hover:bg-white rounded transition-all"
+                              disabled={isEditingId === person.id}
+                              className="p-2 text-slate-400 hover:text-blue-600 hover:bg-white rounded transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                              <Edit3 size={16} />
+                              {isEditingId === person.id ? (
+                                <span className="text-xs font-bold text-blue-600 flex items-center">
+                                  <RefreshCw size={14} className="animate-spin mr-1" />
+                                  處理中...
+                                </span>
+                              ) : (
+                                <Edit3 size={16} />
+                              )}
                             </button>
                             <button 
                               onClick={() => handleDeletePersonnel(person.id)}

@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import api from '../services/api';
 import { 
   User, IdCard, Building2, Briefcase, GraduationCap, 
   Lock, ArrowLeft, CheckCircle, 
   Fingerprint, Scan, ShieldCheck, Info, Eye, EyeOff,
   UserCheck, Zap, Monitor, Settings, CheckSquare, Square,
-  X, LockKeyhole
+  X, LockKeyhole, RefreshCw
 } from 'lucide-react';
 
 interface RegisterPageProps {
@@ -12,6 +13,7 @@ interface RegisterPageProps {
   initialData?: any;
   isEdit?: boolean;
   onSave?: (data: any) => void;
+  onSuccess?: (users: any[]) => void;
   isModal?: boolean;
 }
 
@@ -20,6 +22,7 @@ const RegisterPage: React.FC<RegisterPageProps> = ({
   initialData, 
   isEdit = false, 
   onSave,
+  onSuccess,
   isModal = false 
 }) => {
   const [loading, setLoading] = useState(false);
@@ -98,19 +101,55 @@ const RegisterPage: React.FC<RegisterPageProps> = ({
     }
   }, [isEdit, initialData]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    // Simulate save/registration
-    setTimeout(() => {
-      setLoading(false);
-      if (isEdit && onSave) {
-        onSave(formData);
+    
+    try {
+      // Prepare request body according to API specification
+      const requestBody = {
+        userName: formData.name,
+        userID: formData.employeeId,
+        department: formData.department,
+        userJobName: formData.position,
+        permissions: formData.permission,
+        userLevel: formData.techLevel,
+        userPassword: formData.password,
+        extraPermissions: {
+          keyPersonnel: formData.extraPermissions.keyPersonnel,
+          mobilePersonnel: formData.extraPermissions.mobilePersonnel,
+          hostSoftware: formData.extraPermissions.hostSoftware,
+          equipmentOp: formData.extraPermissions.equipmentOp
+        }
+      };
+
+      // Call API
+      const response = await api.post('https://localhost:7044/api/CheckIn/AddUser', requestBody);
+      const { code, message, data } = response.data;
+
+      if (code === 200) {
+        // Success handling
+        if (isEdit && onSave) {
+          onSave(formData);
+        } else {
+          alert('註冊成功！請使用新賬號登入。');
+          if (onSuccess && Array.isArray(data)) {
+            onSuccess(data);
+          }
+        }
+        onBack();
       } else {
-        alert('註冊成功！請使用新賬號登入。');
+        // Error handling from API
+        alert(`註冊失敗: ${message || '未知錯誤'} (代碼: ${code})`);
       }
-      onBack();
-    }, 1200);
+    } catch (error: any) {
+      // Error handling for request exceptions
+      const errorMsg = error.response?.data?.message || error.message || '網絡錯誤';
+      alert(`請求異常: ${errorMsg}`);
+    } finally {
+      // Reset loading state
+      setLoading(false);
+    }
   };
 
   const toggleExtraPermission = (key: keyof typeof formData.extraPermissions) => {
@@ -519,7 +558,12 @@ const RegisterPage: React.FC<RegisterPageProps> = ({
                 disabled={loading}
                 className={`flex-[2] flex items-center justify-center bg-blue-600 text-white py-2.5 px-4 rounded-xl text-sm font-bold hover:bg-blue-700 shadow-lg shadow-blue-200 transition-all active:scale-95 outline-none ${loading ? 'opacity-70 cursor-not-allowed' : ''}`}
               >
-                {loading ? '正在提交...' : (
+                {loading ? (
+                  <>
+                    <RefreshCw size={16} className="mr-2 animate-spin" />
+                    處理中...
+                  </>
+                ) : (
                   <>
                     <CheckCircle size={16} className="mr-2" /> {isEdit ? '保存修改內容' : '完成註冊申請'}
                   </>

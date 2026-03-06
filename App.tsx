@@ -8,8 +8,8 @@ import Line3DView from './components/Line3DView';
 import DeviceSettings from './components/DeviceSettings';
 import AttendanceMaintenance from './components/AttendanceMaintenance';
 import FACAManagement from './components/FACAManagement';
-import { PageView, Equipment, ProductionLine, FACAPendingItem } from './types';
-import { MOCK_EQUIPMENT, MOCK_LINES } from './constants';
+import { PageView, Equipment, ProductionLine, FACAPendingItem, Personnel, UserData } from './types';
+import { MOCK_EQUIPMENT, MOCK_LINES, INITIAL_PERSONNEL } from './constants';
 
 const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -24,6 +24,7 @@ const App: React.FC = () => {
   const [allLines, setAllLines] = useState<ProductionLine[]>(MOCK_LINES);
   const [allEquipment, setAllEquipment] = useState<Equipment[]>(MOCK_EQUIPMENT);
   const [facaPendingItems, setFacaPendingItems] = useState<FACAPendingItem[]>([]);
+  const [personnelList, setPersonnelList] = useState<Personnel[]>(INITIAL_PERSONNEL);
 
   const handleLogin = () => {
     setIsAuthenticated(true);
@@ -85,6 +86,31 @@ const App: React.FC = () => {
     setCurrentPage('REGISTER');
   };
 
+  const handleRegisterSuccess = (users: UserData[]) => {
+    if (Array.isArray(users)) {
+      const mappedPersonnel: Personnel[] = users.map(user => ({
+        id: user.UserID,
+        name: user.UserName,
+        employeeId: user.UserID,
+        department: user.Department,
+        position: user.UserJobName,
+        techLevel: user.UserLevel,
+        hasFingerprint1: !!(user.FingerprintInfoA && (Array.isArray(user.FingerprintInfoA) ? user.FingerprintInfoA.length > 0 : true)),
+        hasFingerprint2: !!(user.FingerprintInfoB && (Array.isArray(user.FingerprintInfoB) ? user.FingerprintInfoB.length > 0 : true)),
+        extraPermissions: {
+          keyPersonnel: !!user.KeyPersonnel,
+          mobilePersonnel: !!user.MobilePersonnel,
+        }
+      }));
+
+      setPersonnelList(prev => {
+        // Filter out existing users with same employeeId to avoid duplicates
+        const filteredPrev = prev.filter(p => !mappedPersonnel.some(mp => mp.employeeId === p.employeeId));
+        return [...filteredPrev, ...mappedPersonnel];
+      });
+    }
+  };
+
   const handleUpdateFactory = (newLines: ProductionLine[], newEquipment: Equipment[], info?: { code: string, floor: string }) => {
     // Merge lines: keep existing lines, update/add new ones
     setAllLines(prev => {
@@ -111,7 +137,12 @@ const App: React.FC = () => {
   const renderContent = () => {
     if (!isAuthenticated) {
       if (currentPage === 'REGISTER') {
-        return <RegisterPage onBack={() => setCurrentPage('LOGIN')} />;
+        return (
+          <RegisterPage 
+            onBack={() => setCurrentPage('LOGIN')} 
+            onSuccess={handleRegisterSuccess}
+          />
+        );
       }
       return <LoginPage onLogin={handleLogin} onGoToRegister={() => setCurrentPage('REGISTER')} />;
     }
@@ -162,6 +193,8 @@ const App: React.FC = () => {
           <AttendanceMaintenance 
             lineId={selectedLineId}
             deviceId={selectedDeviceId}
+            personnelList={personnelList}
+            setPersonnelList={setPersonnelList}
             onBack={() => setCurrentPage('3D_VIEW')} 
             onGoToRegister={handleGoToRegister} 
           />
@@ -175,7 +208,12 @@ const App: React.FC = () => {
           />
         );
       case 'REGISTER':
-        return <RegisterPage onBack={() => setCurrentPage(previousPage || 'ATTENDANCE_MAINTENANCE')} />;
+        return (
+          <RegisterPage 
+            onBack={() => setCurrentPage(previousPage || 'ATTENDANCE_MAINTENANCE')} 
+            onSuccess={handleRegisterSuccess}
+          />
+        );
       default:
         return (
           <LineManagement 

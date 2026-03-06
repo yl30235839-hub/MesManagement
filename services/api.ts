@@ -31,7 +31,7 @@ api.interceptors.response.use(
   (error) => {
     // Specialized handling for "Network Error" which occurs when the local server is unreachable
     if (error.message === 'Network Error') {
-      console.error('MES API Network Error: The local server at https://localhost:7201 may be offline or CORS is not configured.');
+      console.error('MES API Network Error: The local server at https://localhost:7044 may be offline or CORS is not configured.');
     }
     
     if (error.response?.status === 401) {
