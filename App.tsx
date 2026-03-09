@@ -25,6 +25,7 @@ const App: React.FC = () => {
   const [allEquipment, setAllEquipment] = useState<Equipment[]>(MOCK_EQUIPMENT);
   const [facaPendingItems, setFacaPendingItems] = useState<FACAPendingItem[]>([]);
   const [personnelList, setPersonnelList] = useState<Personnel[]>(INITIAL_PERSONNEL);
+  const [editingPersonnel, setEditingPersonnel] = useState<Personnel | null>(null);
 
   const handleLogin = () => {
     setIsAuthenticated(true);
@@ -81,8 +82,9 @@ const App: React.FC = () => {
     setCurrentPage('FACA_MANAGEMENT');
   };
 
-  const handleGoToRegister = () => {
+  const handleGoToRegister = (personnel?: Personnel) => {
     setPreviousPage(currentPage);
+    setEditingPersonnel(personnel || null);
     setCurrentPage('REGISTER');
   };
 
@@ -141,6 +143,8 @@ const App: React.FC = () => {
           <RegisterPage 
             onBack={() => setCurrentPage('LOGIN')} 
             onSuccess={handleRegisterSuccess}
+            lineSystemName={selectedLineId || ''}
+            equipmentSystemName={selectedDeviceId || ''}
           />
         );
       }
@@ -210,8 +214,34 @@ const App: React.FC = () => {
       case 'REGISTER':
         return (
           <RegisterPage 
-            onBack={() => setCurrentPage(previousPage || 'ATTENDANCE_MAINTENANCE')} 
+            onBack={() => {
+              setEditingPersonnel(null);
+              setCurrentPage(previousPage || 'ATTENDANCE_MAINTENANCE');
+            }} 
             onSuccess={handleRegisterSuccess}
+            onSave={(data) => {
+              setPersonnelList(prev => prev.map(p => 
+                p.employeeId === data.employeeId 
+                  ? { 
+                      ...p, 
+                      name: data.name, 
+                      department: data.department,
+                      position: data.position,
+                      techLevel: data.techLevel,
+                      extraPermissions: {
+                        keyPersonnel: data.extraPermissions.keyPersonnel,
+                        mobilePersonnel: data.extraPermissions.mobilePersonnel
+                      }
+                    } 
+                  : p
+              ));
+              setEditingPersonnel(null);
+              setCurrentPage(previousPage || 'ATTENDANCE_MAINTENANCE');
+            }}
+            isEdit={!!editingPersonnel}
+            initialData={editingPersonnel}
+            lineSystemName={selectedLineId || ''}
+            equipmentSystemName={selectedDeviceId || ''}
           />
         );
       default:

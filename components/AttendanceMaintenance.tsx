@@ -48,7 +48,7 @@ interface AttendanceMaintenanceProps {
   personnelList: Personnel[];
   setPersonnelList: React.Dispatch<React.SetStateAction<Personnel[]>>;
   onBack: () => void;
-  onGoToRegister: () => void;
+  onGoToRegister: (personnel?: Personnel) => void;
 }
 
 const AttendanceMaintenance: React.FC<AttendanceMaintenanceProps> = ({ 
@@ -78,9 +78,22 @@ const AttendanceMaintenance: React.FC<AttendanceMaintenanceProps> = ({
   const [notCheckedInList, setNotCheckedInList] = useState<DetailPerson[]>([]);
 
   // Edit User Modal State
-  const [editingPerson, setEditingPerson] = useState<Personnel | null>(null);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isEditingId, setIsEditingId] = useState<string | null>(null);
+  const [isDeletingId, setIsDeletingId] = useState<string | null>(null);
+  const [personToDelete, setPersonToDelete] = useState<Personnel | null>(null);
+
+  // Notification State
+  const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' | null }>({
+    message: '',
+    type: null
+  });
+
+  const showNotification = (message: string, type: 'success' | 'error') => {
+    setNotification({ message, type });
+    setTimeout(() => {
+      setNotification({ message: '', type: null });
+    }, 3000);
+  };
 
   // Generate Time Periods based on Shift
   const statisticsData = useMemo(() => {
@@ -166,7 +179,7 @@ const AttendanceMaintenance: React.FC<AttendanceMaintenanceProps> = ({
           }));
           setRecords(updatedRecords);
         } else {
-          alert(`考勤紀錄刷新失敗: ${message}`);
+          showNotification(`考勤紀錄刷新失敗: ${message}`, 'error');
         }
       } else if (activeView === 'PERSONNEL') {
         const response = await api.post('https://localhost:7044/api/CheckIn/UserDataRefresh', {
@@ -191,14 +204,14 @@ const AttendanceMaintenance: React.FC<AttendanceMaintenanceProps> = ({
           }));
           setPersonnelList(updatedPersonnel);
         } else {
-          alert(`人員信息刷新失敗: ${message || '後端返回異常'}`);
+          showNotification(`人員信息刷新失敗: ${message || '後端返回異常'}`, 'error');
         }
       }
     } catch (error: any) {
       if (error.message === 'Network Error') {
-        alert('通訊異常：無法連線至後端 API (Network Error)。請確認 Port 7044 服務已啟動。');
+        showNotification('通訊異常：無法連線至後端 API (Network Error)。請確認 Port 7044 服務已啟動。', 'error');
       } else {
-        alert(`刷新過程發生錯誤: ${error.message}`);
+        showNotification(`刷新過程發生錯誤: ${error.message}`, 'error');
       }
     } finally {
       setIsRefreshing(false);
@@ -214,7 +227,7 @@ const AttendanceMaintenance: React.FC<AttendanceMaintenanceProps> = ({
     if (!file) return;
     const fileName = file.name.toLowerCase();
     if (!fileName.endsWith('.xlsx') && !fileName.endsWith('.xls')) {
-      alert('請上傳正確的 Excel 表格文件 (.xlsx, .xls)');
+      showNotification('請上傳正確的 Excel 表格文件 (.xlsx, .xls)', 'error');
       return;
     }
 
@@ -245,22 +258,42 @@ const AttendanceMaintenance: React.FC<AttendanceMaintenanceProps> = ({
         }));
 
         setPersonnelList(prev => [...prev, ...importedData]);
-        alert(`成功導入 ${importedData.length} 位人員信息！`);
+        showNotification(`成功導入 ${importedData.length} 位人員信息！`, 'success');
       } else {
-        alert(`批量導入失敗: ${message || '未知錯誤'} (代碼: ${code})`);
+        showNotification(`批量導入失敗: ${message || '未知錯誤'} (代碼: ${code})`, 'error');
       }
     } catch (error: any) {
       const errorMsg = error.response?.data?.message || error.message || '網絡錯誤';
-      alert(`批量導入請求異常: ${errorMsg}`);
+      showNotification(`批量導入請求異常: ${errorMsg}`, 'error');
     } finally {
       setIsImporting(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
-  const handleDeletePersonnel = (id: string) => {
-    if (window.confirm('確定要刪除該人員信息嗎？相關指紋數據也將被同步移除。')) {
-      setPersonnelList(prev => prev.filter(p => p.id !== id));
+  const handleDeletePersonnel = async (person: Personnel) => {
+    setIsDeletingId(person.id);
+    setPersonToDelete(null);
+    try {
+      const response = await api.post('https://localhost:7044/api/CheckIn/DeleteUser', {
+        lineSystemName: lineId || "",
+        equipmentSystemName: deviceId || "",
+        userID: person.employeeId
+      });
+
+      const { code, message } = response.data;
+
+      if (code === 200) {
+        setPersonnelList(prev => prev.filter(p => p.id !== person.id));
+        showNotification('人員刪除成功！', 'success');
+      } else {
+        showNotification(`刪除人員失敗: ${message || '未知錯誤'} (代碼: ${code})`, 'error');
+      }
+    } catch (error: any) {
+      const errorMsg = error.response?.data?.message || error.message || '網絡錯誤';
+      showNotification(`請求異常: ${errorMsg}`, 'error');
+    } finally {
+      setIsDeletingId(null);
     }
   };
 
@@ -291,37 +324,16 @@ const AttendanceMaintenance: React.FC<AttendanceMaintenanceProps> = ({
             mobilePersonnel: !!user.MobilePersonnel,
           }
         };
-        setEditingPerson(mappedPerson);
-        setIsEditModalOpen(true);
+        onGoToRegister(mappedPerson);
       } else {
-        alert(`編輯請求失敗: ${message || '未知錯誤'} (代碼: ${code})`);
+        showNotification(`編輯請求失敗: ${message || '未知錯誤'} (代碼: ${code})`, 'error');
       }
     } catch (error: any) {
       const errorMsg = error.response?.data?.message || error.message || '網絡錯誤';
-      alert(`請求異常: ${errorMsg}`);
+      showNotification(`請求異常: ${errorMsg}`, 'error');
     } finally {
       setIsEditingId(null);
     }
-  };
-
-  const handleSaveEdit = (updatedData: any) => {
-    console.log('Saving personnel updates:', updatedData);
-    setPersonnelList(prev => prev.map(p => 
-      p.employeeId === updatedData.employeeId 
-        ? { 
-            ...p, 
-            name: updatedData.name, 
-            department: updatedData.department,
-            position: updatedData.position,
-            techLevel: updatedData.techLevel,
-            extraPermissions: {
-              keyPersonnel: updatedData.extraPermissions.keyPersonnel,
-              mobilePersonnel: updatedData.extraPermissions.mobilePersonnel
-            }
-          } 
-        : p
-    ));
-    alert('用戶信息更新成功！');
   };
 
   const handleAddUser = async () => {
@@ -339,12 +351,12 @@ const AttendanceMaintenance: React.FC<AttendanceMaintenanceProps> = ({
         onGoToRegister();
       } else {
         // 錯誤處理：展示 API 返回的錯誤信息
-        alert(`新增人員失敗: ${message || '未知錯誤'} (代碼: ${code})`);
+        showNotification(`新增人員失敗: ${message || '未知錯誤'} (代碼: ${code})`, 'error');
       }
     } catch (error: any) {
       // 錯誤處理：捕獲請求異常
       const errorMsg = error.response?.data?.message || error.message || '網絡錯誤';
-      alert(`請求異常: ${errorMsg}`);
+      showNotification(`請求異常: ${errorMsg}`, 'error');
     } finally {
       // 重置 Loading 狀態
       setIsAddingUser(false);
@@ -353,6 +365,48 @@ const AttendanceMaintenance: React.FC<AttendanceMaintenanceProps> = ({
 
   return (
     <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
+      {/* Notification Banner */}
+      {notification.type && (
+        <div className={`fixed top-6 left-1/2 -translate-x-1/2 z-[9999] px-6 py-3 rounded-2xl shadow-2xl flex items-center animate-in fade-in slide-in-from-top-4 duration-300 ${
+          notification.type === 'success' ? 'bg-emerald-600 text-white' : 'bg-red-600 text-white'
+        }`}>
+          {notification.type === 'success' ? <CheckCircle size={20} className="mr-3" /> : <AlertCircle size={20} className="mr-3" />}
+          <span className="font-bold text-sm">{notification.message}</span>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {personToDelete && (
+        <div className="fixed inset-0 z-[9998] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="p-8 text-center">
+              <div className="w-20 h-20 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto mb-6">
+                <Trash2 size={40} />
+              </div>
+              <h3 className="text-xl font-bold text-slate-900 mb-2">確認刪除人員？</h3>
+              <p className="text-slate-500 text-sm leading-relaxed">
+                您確定要刪除人員 <span className="font-bold text-slate-900">「{personToDelete.name}」</span> 的信息嗎？<br />
+                相關指紋數據也將被同步從設備中移除，此操作不可撤銷。
+              </p>
+            </div>
+            <div className="p-6 bg-slate-50 flex gap-3">
+              <button 
+                onClick={() => setPersonToDelete(null)}
+                className="flex-1 py-3 bg-white border border-slate-200 text-slate-600 font-bold rounded-xl hover:bg-slate-100 transition-all"
+              >
+                取消
+              </button>
+              <button 
+                onClick={() => handleDeletePersonnel(personToDelete)}
+                className="flex-1 py-3 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 shadow-lg shadow-red-200 transition-all active:scale-95"
+              >
+                確認刪除
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <input 
         type="file" 
         ref={fileInputRef} 
@@ -723,10 +777,18 @@ const AttendanceMaintenance: React.FC<AttendanceMaintenanceProps> = ({
                               )}
                             </button>
                             <button 
-                              onClick={() => handleDeletePersonnel(person.id)}
-                              className="p-2 text-slate-400 hover:text-red-600 hover:bg-white rounded transition-all"
+                              onClick={() => setPersonToDelete(person)}
+                              disabled={isDeletingId === person.id}
+                              className="p-2 text-slate-400 hover:text-red-600 hover:bg-white rounded transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                              <Trash2 size={16} />
+                              {isDeletingId === person.id ? (
+                                <span className="text-xs font-bold text-red-600 flex items-center">
+                                  <RefreshCw size={14} className="animate-spin mr-1" />
+                                  處理中...
+                                </span>
+                              ) : (
+                                <Trash2 size={16} />
+                              )}
                             </button>
                           </div>
                         </td>
@@ -748,24 +810,6 @@ const AttendanceMaintenance: React.FC<AttendanceMaintenanceProps> = ({
           </>
         )}
       </div>
-
-      {/* User Edit Modal */}
-      {isEditModalOpen && editingPerson && (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-md animate-in fade-in duration-300">
-          <div className="w-full max-w-4xl max-h-[90vh] overflow-y-auto custom-scrollbar rounded-2xl shadow-2xl animate-in zoom-in-95 duration-300">
-            <RegisterPage 
-              isModal={true}
-              isEdit={true}
-              initialData={editingPerson}
-              onBack={() => {
-                setIsEditModalOpen(false);
-                setEditingPerson(null);
-              }}
-              onSave={handleSaveEdit}
-            />
-          </div>
-        </div>
-      )}
 
       {/* Statistics Detail Modal */}
       {isDetailModalOpen && (

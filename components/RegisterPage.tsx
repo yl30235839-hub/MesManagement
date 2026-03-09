@@ -15,6 +15,8 @@ interface RegisterPageProps {
   onSave?: (data: any) => void;
   onSuccess?: (users: any[]) => void;
   isModal?: boolean;
+  lineSystemName?: string;
+  equipmentSystemName?: string;
 }
 
 const RegisterPage: React.FC<RegisterPageProps> = ({ 
@@ -23,7 +25,9 @@ const RegisterPage: React.FC<RegisterPageProps> = ({
   isEdit = false, 
   onSave,
   onSuccess,
-  isModal = false 
+  isModal = false,
+  lineSystemName = '',
+  equipmentSystemName = ''
 }) => {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -45,12 +49,14 @@ const RegisterPage: React.FC<RegisterPageProps> = ({
 
   // Fingerprint Registration State 1
   const [isRegisteringFinger, setIsRegisteringFinger] = useState(false);
+  const [isVerifyingFinger, setIsVerifyingFinger] = useState(false);
   const [isFingerRegistered, setIsFingerRegistered] = useState(false);
   const [fingerprintImage, setFingerprintImage] = useState<string | null>(null);
   const [fingerprintStatus, setFingerprintStatus] = useState('等待登記...');
 
   // Fingerprint Registration State 2
   const [isRegisteringFinger2, setIsRegisteringFinger2] = useState(false);
+  const [isVerifyingFinger2, setIsVerifyingFinger2] = useState(false);
   const [isFingerRegistered2, setIsFingerRegistered2] = useState(false);
   const [fingerprintImage2, setFingerprintImage2] = useState<string | null>(null);
   const [fingerprintStatus2, setFingerprintStatus2] = useState('等待登記2...');
@@ -163,63 +169,162 @@ const RegisterPage: React.FC<RegisterPageProps> = ({
   };
 
   // Logic for Fingerprint 1
-  const startFingerprintRegistration = () => {
+  const startFingerprintRegistration = async () => {
     if (!isFinger1Enabled) return;
     setIsRegisteringFinger(true);
     setIsFingerRegistered(false);
     setFingerprintImage(null);
-    setFingerprintStatus('開始采集指紋1，請按下第1次手指');
+    setFingerprintStatus('開始采集指紋1，請準備...');
 
-    setTimeout(() => {
-      setFingerprintStatus('請按下第2次手指...');
-      setTimeout(() => {
-        setFingerprintStatus('請按下第3次手指...');
-        setTimeout(() => {
-          setIsRegisteringFinger(false);
-          setIsFingerRegistered(true);
-          setFingerprintStatus('指紋登記成功！');
-          setFingerprintImage('https://images.unsplash.com/photo-1518133910546-b6c2fb7d79e3?auto=format&fit=crop&q=80&w=200&h=200');
-        }, 1000);
-      }, 1000);
-    }, 1000);
+    try {
+      for (let count = 1; count <= 3; count++) {
+        setFingerprintStatus(`正在采集指紋1 (第 ${count} 次)，請按下手指...`);
+        
+        const response = await api.post('https://localhost:7044/api/CheckIn/ABFingerRegister', {
+          lineSystemName: lineSystemName,
+          equipmentSystemName: equipmentSystemName,
+          fingerNo: 'A',
+          count: count
+        });
+        
+        const { code, message, data } = response.data;
+        
+        if (code === 200) {
+          if (data?.image) {
+            setFingerprintImage(`data:image/png;base64,${data.image}`);
+          }
+          
+          if (count < 3) {
+            setFingerprintStatus(`第 ${count} 次采集成功，請抬起手指並準備第 ${count + 1} 次按壓...`);
+            // 稍微延遲一下，讓用戶有時間反應
+            await new Promise(resolve => setTimeout(resolve, 1500));
+          } else {
+            setIsFingerRegistered(true);
+            setFingerprintStatus('指紋1登記成功！');
+          }
+        } else {
+          throw new Error(message || `第 ${count} 次采集失敗`);
+        }
+      }
+    } catch (error: any) {
+      const errorMsg = error.response?.data?.message || error.message || '網絡錯誤';
+      alert(`指紋登記失敗: ${errorMsg}`);
+      setFingerprintStatus(`登記失敗: ${errorMsg}`);
+    } finally {
+      setIsRegisteringFinger(false);
+    }
   };
 
-  const verifyFingerprint = () => {
+  const verifyFingerprint = async () => {
     if (!isFingerRegistered || !isFinger1Enabled) return;
+    setIsVerifyingFinger(true);
     setFingerprintStatus('正在驗證指紋1，請按下手指...');
-    setTimeout(() => {
-      setFingerprintStatus('指紋驗證通過！匹配度：99.8%');
-    }, 800);
+    
+    try {
+      const response = await api.post('https://localhost:7044/api/CheckIn/ABFingerVerify', {
+        lineSystemName: lineSystemName,
+        equipmentSystemName: equipmentSystemName,
+        fingerNo: 'A'
+      });
+      
+      const { code, message, data } = response.data;
+      
+      if (code === 200) {
+        if (data?.image) {
+          setFingerprintImage(`data:image/png;base64,${data.image}`);
+        }
+        const matchScore = data?.result !== undefined ? (data.result * 100).toFixed(1) : '0.0';
+        setFingerprintStatus(`指紋驗證通過！匹配度：${matchScore}%`);
+      } else {
+        alert(`驗證失敗: ${message || '未知錯誤'} (代碼: ${code})`);
+        setFingerprintStatus(`驗證失敗: ${message}`);
+      }
+    } catch (error: any) {
+      const errorMsg = error.response?.data?.message || error.message || '網絡錯誤';
+      alert(`驗證異常: ${errorMsg}`);
+      setFingerprintStatus(`驗證異常: ${errorMsg}`);
+    } finally {
+      setIsVerifyingFinger(false);
+    }
   };
 
   // Logic for Fingerprint 2
-  const startFingerprintRegistration2 = () => {
+  const startFingerprintRegistration2 = async () => {
     if (!isFinger2Enabled) return;
     setIsRegisteringFinger2(true);
     setIsFingerRegistered2(false);
     setFingerprintImage2(null);
-    setFingerprintStatus2('開始采集指紋2，請按下第1次手指');
+    setFingerprintStatus2('開始采集指紋2，請準備...');
 
-    setTimeout(() => {
-      setFingerprintStatus2('請按下第2次手指...');
-      setTimeout(() => {
-        setFingerprintStatus2('請按下第3次手指...');
-        setTimeout(() => {
-          setIsRegisteringFinger2(false);
-          setIsFingerRegistered2(true);
-          setFingerprintStatus2('指紋登記2成功！');
-          setFingerprintImage2('https://images.unsplash.com/photo-1518133910546-b6c2fb7d79e3?auto=format&fit=crop&q=80&w=200&h=200');
-        }, 1000);
-      }, 1000);
-    }, 1000);
+    try {
+      for (let count = 1; count <= 3; count++) {
+        setFingerprintStatus2(`正在采集指紋2 (第 ${count} 次)，請按下手指...`);
+        
+        const response = await api.post('https://localhost:7044/api/CheckIn/ABFingerRegister', {
+          lineSystemName: lineSystemName,
+          equipmentSystemName: equipmentSystemName,
+          fingerNo: 'B',
+          count: count
+        });
+        
+        const { code, message, data } = response.data;
+        
+        if (code === 200) {
+          if (data?.image) {
+            setFingerprintImage2(`data:image/png;base64,${data.image}`);
+          }
+          
+          if (count < 3) {
+            setFingerprintStatus2(`第 ${count} 次采集成功，請抬起手指並準備第 ${count + 1} 次按壓...`);
+            await new Promise(resolve => setTimeout(resolve, 1500));
+          } else {
+            setIsFingerRegistered2(true);
+            setFingerprintStatus2('指紋2登記成功！');
+          }
+        } else {
+          throw new Error(message || `第 ${count} 次采集失敗`);
+        }
+      }
+    } catch (error: any) {
+      const errorMsg = error.response?.data?.message || error.message || '網絡錯誤';
+      alert(`指紋登記2失敗: ${errorMsg}`);
+      setFingerprintStatus2(`登記失敗: ${errorMsg}`);
+    } finally {
+      setIsRegisteringFinger2(false);
+    }
   };
 
-  const verifyFingerprint2 = () => {
+  const verifyFingerprint2 = async () => {
     if (!isFingerRegistered2 || !isFinger2Enabled) return;
+    setIsVerifyingFinger2(true);
     setFingerprintStatus2('正在驗證指紋2，請按下手指...');
-    setTimeout(() => {
-      setFingerprintStatus2('指紋驗證通過！匹配度：99.6%');
-    }, 800);
+    
+    try {
+      const response = await api.post('https://localhost:7044/api/CheckIn/ABFingerVerify', {
+        lineSystemName: lineSystemName,
+        equipmentSystemName: equipmentSystemName,
+        fingerNo: 'B'
+      });
+      
+      const { code, message, data } = response.data;
+      
+      if (code === 200) {
+        if (data?.image) {
+          setFingerprintImage2(`data:image/png;base64,${data.image}`);
+        }
+        const matchScore = data?.result !== undefined ? (data.result * 100).toFixed(1) : '0.0';
+        setFingerprintStatus2(`指紋驗證通過！匹配度：${matchScore}%`);
+      } else {
+        alert(`驗證失敗: ${message || '未知錯誤'} (代碼: ${code})`);
+        setFingerprintStatus2(`驗證失敗: ${message}`);
+      }
+    } catch (error: any) {
+      const errorMsg = error.response?.data?.message || error.message || '網絡錯誤';
+      alert(`驗證異常: ${errorMsg}`);
+      setFingerprintStatus2(`驗證異常: ${errorMsg}`);
+    } finally {
+      setIsVerifyingFinger2(false);
+    }
   };
 
   const extraPermsList = [
@@ -412,16 +517,16 @@ const RegisterPage: React.FC<RegisterPageProps> = ({
                     className={`flex-1 flex items-center justify-center py-1.5 px-2 rounded-lg text-[10px] font-bold transition-all shadow-sm
                       ${(isRegisteringFinger || !isFinger1Enabled) ? 'bg-slate-200 text-slate-400 border-slate-200' : 'bg-white border border-blue-600 text-blue-600 hover:bg-blue-50'}`}
                   >
-                    <Scan size={12} className="mr-1" /> {isFingerRegistered ? '重新登記' : '登記1'}
+                    <Scan size={12} className="mr-1" /> {isRegisteringFinger ? '處理中...' : (isFingerRegistered ? '重新登記' : '登記1')}
                   </button>
                   <button
                     type="button"
                     onClick={verifyFingerprint}
-                    disabled={!isFingerRegistered || isRegisteringFinger || !isFinger1Enabled}
+                    disabled={!isFingerRegistered || isRegisteringFinger || isVerifyingFinger || !isFinger1Enabled}
                     className={`flex-1 flex items-center justify-center py-1.5 px-2 rounded-lg text-[10px] font-bold transition-all shadow-sm
-                      ${(!isFingerRegistered || isRegisteringFinger || !isFinger1Enabled) ? 'bg-slate-200 text-slate-400' : 'bg-blue-600 text-white hover:bg-blue-700'}`}
+                      ${(!isFingerRegistered || isRegisteringFinger || isVerifyingFinger || !isFinger1Enabled) ? 'bg-slate-200 text-slate-400' : 'bg-blue-600 text-white hover:bg-blue-700'}`}
                   >
-                    <ShieldCheck size={12} className="mr-1" /> 驗證1
+                    <ShieldCheck size={12} className="mr-1" /> {isVerifyingFinger ? '處理中...' : '驗證1'}
                   </button>
                 </div>
               </div>
@@ -469,16 +574,16 @@ const RegisterPage: React.FC<RegisterPageProps> = ({
                     className={`flex-1 flex items-center justify-center py-1.5 px-2 rounded-lg text-[10px] font-bold transition-all shadow-sm
                       ${(isRegisteringFinger2 || !isFinger2Enabled) ? 'bg-slate-200 text-slate-400 border-slate-200' : 'bg-white border border-indigo-600 text-indigo-600 hover:bg-indigo-50'}`}
                   >
-                    <Scan size={12} className="mr-1" /> {isFingerRegistered2 ? '重新登記' : '登記2'}
+                    <Scan size={12} className="mr-1" /> {isRegisteringFinger2 ? '處理中...' : (isFingerRegistered2 ? '重新登記' : '登記2')}
                   </button>
                   <button
                     type="button"
                     onClick={verifyFingerprint2}
-                    disabled={!isFingerRegistered2 || isRegisteringFinger2 || !isFinger2Enabled}
+                    disabled={!isFingerRegistered2 || isRegisteringFinger2 || isVerifyingFinger2 || !isFinger2Enabled}
                     className={`flex-1 flex items-center justify-center py-1.5 px-2 rounded-lg text-[10px] font-bold transition-all shadow-sm
-                      ${(!isFingerRegistered2 || isRegisteringFinger2 || !isFinger2Enabled) ? 'bg-slate-200 text-slate-400' : 'bg-indigo-600 text-white hover:bg-indigo-700'}`}
+                      ${(!isFingerRegistered2 || isRegisteringFinger2 || isVerifyingFinger2 || !isFinger2Enabled) ? 'bg-slate-200 text-slate-400' : 'bg-indigo-600 text-white hover:bg-indigo-700'}`}
                   >
-                    <ShieldCheck size={12} className="mr-1" /> 驗證2
+                    <ShieldCheck size={12} className="mr-1" /> {isVerifyingFinger2 ? '處理中...' : '驗證2'}
                   </button>
                 </div>
               </div>
