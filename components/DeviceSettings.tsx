@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Equipment, MachineStatus, EquipmentType } from '../types';
+import api from '../services/api';
 import { 
   ArrowLeft, Save, Activity, Settings, 
   Cpu, Zap, Database, Plug, Plus, Trash2, Server,
@@ -58,6 +59,7 @@ const DeviceSettings: React.FC<DeviceSettingsProps> = ({ device, onSave, onBack 
     name: '',
     description: '',
     status: MachineStatus.Stopped,
+    equipmentSN: '',
     sn: '',
     factoryArea: '',
     floor: '',
@@ -70,7 +72,14 @@ const DeviceSettings: React.FC<DeviceSettingsProps> = ({ device, onSave, onBack 
     plcDataType: 'CDAB',
     plcStringReverse: false,
     rack: '0',
-    slot: '2'
+    slot: '2',
+    alarmAddress: '',
+    alarmAddressLength: 0,
+    okCountAddress: '',
+    ngCountAddress: '',
+    rejectCountAddress: '',
+    statusAddress: '',
+    alarmEndAddress: ''
   });
 
   useEffect(() => {
@@ -79,6 +88,7 @@ const DeviceSettings: React.FC<DeviceSettingsProps> = ({ device, onSave, onBack 
         name: device.name,
         description: device.description || '',
         status: device.status,
+        equipmentSN: device.equipmentSN || '',
         sn: device.sn || device.id,
         factoryArea: device.factoryArea || '',
         floor: device.floor || '',
@@ -91,19 +101,63 @@ const DeviceSettings: React.FC<DeviceSettingsProps> = ({ device, onSave, onBack 
         plcDataType: 'CDAB',
         plcStringReverse: false,
         rack: '0',
-        slot: '2'
+        slot: '2',
+        alarmAddress: device.alarmAddress || '',
+        alarmAddressLength: device.alarmAddressLength || 0,
+        okCountAddress: device.okCountAddress || '',
+        ngCountAddress: device.ngCountAddress || '',
+        rejectCountAddress: device.rejectCountAddress || '',
+        statusAddress: device.statusAddress || '',
+        alarmEndAddress: device.alarmEndAddress || ''
       });
     }
   }, [device]);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!device) return;
     setSaving(true);
-    setTimeout(() => {
-      onSave({ ...device, ...formData });
+    
+    try {
+      if (device.type === EquipmentType.AssemblyEquipment) {
+        const response = await api.post('https://localhost:7044/api/Equipment/AEMaintenance', {
+          lineSystemName: device.lineId,
+          equipmentSystemName: device.id,
+          equipmentName: formData.name,
+          description: formData.description,
+          equipmentSN: formData.equipmentSN,
+          plcBrand: formData.plcType,
+          plcIP: formData.ip,
+          plcPort: parseInt(formData.plcPort) || 0,
+          station: parseInt(formData.plcStation) || 0,
+          dataType: formData.plcDataType,
+          isReverse: formData.plcStringReverse,
+          alarmAddress: formData.alarmAddress,
+          alarmAddressLength: formData.alarmAddressLength,
+          oKCapacityAdd: formData.okCountAddress,
+          nGCapacityAdd: formData.ngCountAddress,
+          throwCapacityAdd: formData.rejectCountAddress,
+          statusAdd: formData.statusAddress,
+          alarmEndSignAdd: formData.alarmEndAddress
+        });
+
+        if (response.data.code === 200) {
+          onSave({ ...device, ...formData });
+          alert(response.data.message || '設備配置與通訊參數已成功保存！');
+        } else {
+          alert(`保存失敗: ${response.data.message || '未知錯誤'}`);
+        }
+      } else {
+        // For other equipment types, keep existing behavior
+        onSave({ ...device, ...formData });
+        alert('設備配置已保存！');
+      }
+    } catch (error: any) {
+      console.error('Save Equipment Error:', error);
+      const errorMsg = error.response?.data?.message || error.message || '網絡錯誤，請檢查後端服務。';
+      alert(`保存過程發生錯誤: ${errorMsg}`);
+    } finally {
       setSaving(false);
-      alert('設備配置與通訊參數已成功保存！');
-    }, 800);
+    }
   };
 
   const handleConnectDB = () => {
@@ -601,6 +655,12 @@ const DeviceSettings: React.FC<DeviceSettingsProps> = ({ device, onSave, onBack 
                   </label>
                   <input type="text" value={formData.sn} onChange={(e) => setFormData({...formData, sn: e.target.value})} className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all font-mono" />
                 </div>
+                <div className="space-y-1">
+                  <label className="text-sm font-semibold text-slate-700 flex items-center">
+                    <Shield size={14} className="mr-1.5 text-blue-500" /> 資產管制編號 (Equipment SN)
+                  </label>
+                  <input type="text" value={formData.equipmentSN} onChange={(e) => setFormData({...formData, equipmentSN: e.target.value})} className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all font-mono" placeholder="例如: ASSET-2024-001" />
+                </div>
                 <div className="md:col-span-2 space-y-1">
                   <label className="text-sm font-semibold text-slate-700 flex items-center">
                     <Fingerprint size={14} className="mr-1.5 text-blue-500" /> 指紋儀編號
@@ -617,8 +677,8 @@ const DeviceSettings: React.FC<DeviceSettingsProps> = ({ device, onSave, onBack 
                   <input type="text" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
                 </div>
                 <div className="space-y-1">
-                  <label className="block text-sm font-semibold text-slate-700 mb-1">設備編號 (SN)</label>
-                  <input type="text" value={formData.sn} onChange={(e) => setFormData({...formData, sn: e.target.value})} className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none font-mono" />
+                  <label className="block text-sm font-semibold text-slate-700 mb-1">資產管制編號 (Equipment SN)</label>
+                  <input type="text" value={formData.equipmentSN} onChange={(e) => setFormData({...formData, equipmentSN: e.target.value})} className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none font-mono" placeholder="例如: ASSET-2024-001" />
                 </div>
                 <div className="md:col-span-2 space-y-1">
                   <label className="block text-sm font-semibold text-slate-700 mb-1">備註說明</label>
@@ -681,6 +741,85 @@ const DeviceSettings: React.FC<DeviceSettingsProps> = ({ device, onSave, onBack 
                   </label>
                 </div>
               </div>
+
+              {device.type === EquipmentType.AssemblyEquipment && (
+                <div className="mt-8 pt-6 border-t border-slate-100">
+                  <h4 className="text-sm font-bold text-slate-800 mb-4 flex items-center">
+                    <Database size={16} className="mr-2 text-indigo-600" /> PLC 數據地址配置
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div className="space-y-1">
+                      <label className="text-sm font-semibold text-slate-700">報警地址</label>
+                      <input 
+                        type="text" 
+                        value={formData.alarmAddress} 
+                        onChange={(e) => setFormData({...formData, alarmAddress: e.target.value})} 
+                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none font-mono" 
+                        placeholder="例如: D1000"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-sm font-semibold text-slate-700">報警地址長度</label>
+                      <input 
+                        type="number" 
+                        value={formData.alarmAddressLength} 
+                        onChange={(e) => setFormData({...formData, alarmAddressLength: parseInt(e.target.value) || 0})} 
+                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none font-mono" 
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-sm font-semibold text-slate-700">OK計數地址</label>
+                      <input 
+                        type="text" 
+                        value={formData.okCountAddress} 
+                        onChange={(e) => setFormData({...formData, okCountAddress: e.target.value})} 
+                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none font-mono" 
+                        placeholder="例如: D1100"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-sm font-semibold text-slate-700">NG計數地址</label>
+                      <input 
+                        type="text" 
+                        value={formData.ngCountAddress} 
+                        onChange={(e) => setFormData({...formData, ngCountAddress: e.target.value})} 
+                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none font-mono" 
+                        placeholder="例如: D1102"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-sm font-semibold text-slate-700">抛料數地址</label>
+                      <input 
+                        type="text" 
+                        value={formData.rejectCountAddress} 
+                        onChange={(e) => setFormData({...formData, rejectCountAddress: e.target.value})} 
+                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none font-mono" 
+                        placeholder="例如: D1104"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-sm font-semibold text-slate-700">設備狀態地址</label>
+                      <input 
+                        type="text" 
+                        value={formData.statusAddress} 
+                        onChange={(e) => setFormData({...formData, statusAddress: e.target.value})} 
+                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none font-mono" 
+                        placeholder="例如: D1106"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-sm font-semibold text-slate-700">報警結束地址</label>
+                      <input 
+                        type="text" 
+                        value={formData.alarmEndAddress} 
+                        onChange={(e) => setFormData({...formData, alarmEndAddress: e.target.value})} 
+                        className="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none font-mono" 
+                        placeholder="例如: D1108"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
               <div className="mt-8 flex flex-col md:flex-row items-center gap-4">
                 <div className="flex-1 p-4 bg-indigo-50 rounded-lg border border-indigo-100 flex items-start">
                   <Activity size={18} className="text-indigo-600 mr-3 mt-0.5" />
@@ -718,8 +857,8 @@ const DeviceSettings: React.FC<DeviceSettingsProps> = ({ device, onSave, onBack 
             </div>
           </div>
         </div>
-        <button onClick={handleSave} disabled={saving} className="flex items-center px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium shadow-sm transition-all active:scale-95">
-          {saving ? <span className="flex items-center"><RotateCw className="animate-spin mr-2" size={18} /> 保存中...</span> : <span className="flex items-center"><Save className="mr-2" size={18} /> 保存配置</span>}
+        <button onClick={handleSave} disabled={saving} className="flex items-center px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium shadow-sm transition-all active:scale-95 disabled:opacity-50">
+          {saving ? <span className="flex items-center"><RotateCw className="animate-spin mr-2" size={18} /> 處理中...</span> : <span className="flex items-center"><Save className="mr-2" size={18} /> 保存配置</span>}
         </button>
       </div>
 

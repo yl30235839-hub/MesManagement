@@ -124,7 +124,12 @@ const App: React.FC = () => {
     setAllEquipment(prev => {
       const lineIds = newLines.map(l => l.id);
       const otherLinesEquip = prev.filter(e => !lineIds.includes(e.lineId));
-      return [...otherLinesEquip, ...newEquipment];
+      
+      // Also ensure no duplicate IDs within the new equipment and existing equipment
+      const newEquipIds = newEquipment.map(e => e.id);
+      const filteredOtherEquip = otherLinesEquip.filter(e => !newEquipIds.includes(e.id));
+      
+      return [...filteredOtherEquip, ...newEquipment];
     });
     
     if (info) setFactoryInfo(info);
@@ -186,6 +191,7 @@ const App: React.FC = () => {
         return (
           <Line3DView 
             equipmentList={allEquipment}
+            lines={allLines}
             onOpenAttendance={handleGoToAttendance} 
             onOpenFACA={handleGoToFACA} 
             facaPendingItems={facaPendingItems}

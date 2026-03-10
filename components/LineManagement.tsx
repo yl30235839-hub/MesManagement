@@ -181,8 +181,9 @@ const LineManagement: React.FC<LineManagementProps> = ({ onViewEquipment, onUpda
 
         // 更新全局設備列表
         if (onUpdateFactory) {
-          // 這裡我們只更新設備，產綫保持不變或合併
-          onUpdateFactory(lines, mappedEquipment);
+          // 只傳遞當前正在更新的產綫，避免 handleUpdateFactory 誤刪其他產綫的設備
+          const currentLine = lines.find(l => l.id === lineId);
+          onUpdateFactory(currentLine ? [currentLine] : [], mappedEquipment);
         }
 
         // 跳轉並傳遞產綫詳細數據

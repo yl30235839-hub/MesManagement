@@ -50,11 +50,20 @@ export interface Equipment {
   temperature: number;
   vibration: number;
   lastMaintenance: string;
+  equipmentSN?: string;
   // Specialized fields for Clock-in Device
   factoryArea?: string;
   floor?: string;
   sn?: string;
   fingerprintId?: string;
+  // Communication fields for Assembly Equipment
+  alarmAddress?: string;
+  alarmAddressLength?: number;
+  okCountAddress?: string;
+  ngCountAddress?: string;
+  rejectCountAddress?: string;
+  statusAddress?: string;
+  alarmEndAddress?: string;
 }
 
 export interface Personnel {

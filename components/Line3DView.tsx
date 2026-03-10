@@ -10,7 +10,7 @@ import {
   Play, Square, User, Hash, CheckCircle2, ClipboardEdit, Save, AlertCircle,
   Scan, ShieldCheck, FileWarning, MessageSquare, Edit3, Fingerprint
 } from 'lucide-react';
-import { Equipment, MachineStatus, EquipmentType, FACAPendingItem, FACATipsMessage, AlarmRecordModel } from '../types';
+import { Equipment, MachineStatus, EquipmentType, FACAPendingItem, FACATipsMessage, AlarmRecordModel, ProductionLine } from '../types';
 
 // Fix: Extend the JSX namespace to include Three.js intrinsic elements provided by React Three Fiber.
 declare global {
@@ -240,20 +240,17 @@ const FingerprintModel: React.FC<ItemProps> = ({ data, isSelected, onClick, posi
 
 const FactoryScene: React.FC<{ 
   equipmentList: Equipment[],
+  lines: ProductionLine[],
   onItemClick: (data: Equipment) => void,
   selectedId: string | null,
   isScanning: boolean
-}> = ({ equipmentList, onItemClick, selectedId, isScanning }) => {
+}> = ({ equipmentList, lines, onItemClick, selectedId, isScanning }) => {
   const groupedEquipment = useMemo(() => {
-    const groups: Record<string, Equipment[]> = {};
-    equipmentList.forEach(item => {
-      if (!groups[item.lineId]) {
-        groups[item.lineId] = [];
-      }
-      groups[item.lineId].push(item);
+    return lines.map(line => {
+      const items = equipmentList.filter(e => e.lineId === line.id);
+      return { line, items };
     });
-    return Object.entries(groups);
-  }, [equipmentList]);
+  }, [equipmentList, lines]);
 
   const rowSpacing = 15;
   const columnSpacing = 3;
@@ -306,37 +303,43 @@ const FactoryScene: React.FC<{
         </mesh>
       </group>
 
-      {groupedEquipment.map(([lineId, items], rowIndex) => (
-        <group key={lineId} position={[0, 0, rowIndex * -rowSpacing]}>
-          <Text 
-            position={[-18, 0.5, 0]} 
-            fontSize={1.2} 
-            color="#3b82f6" 
-            anchorX="right" 
-            rotation={[-Math.PI / 2, 0, Math.PI / 2]}
-          >
-            Line: {lineId}
-          </Text>
+      {groupedEquipment.map(({ line, items }, rowIndex) => {
+        if (!line || !line.id) return null;
+        return (
+          <group key={line.id} position={[0, 0, rowIndex * -rowSpacing]}>
+            <Text 
+              position={[-18, 0.5, 0]} 
+              fontSize={1.2} 
+              color="#3b82f6" 
+              anchorX="right" 
+              rotation={[-Math.PI / 2, 0, Math.PI / 2]}
+            >
+              Line: {line.name || line.id || 'Unknown Line'}
+            </Text>
 
-          {items.map((item, colIndex) => {
-            const x = (colIndex * columnSpacing) - ((items.length - 1) * columnSpacing / 2);
-            const position: [number, number, number] = [x, 0, 0];
+            {items.map((item, colIndex) => {
+              if (!item || !item.id) return null;
+              const x = (colIndex * columnSpacing) - ((items.length - 1) * columnSpacing / 2);
+              const position: [number, number, number] = [x, 0, 0];
 
-            // Robust identification of Checkin Equipment
-            const isCheckin = item.type === EquipmentType.CheckinEquipment || 
-                             item.name.includes('打卡') || 
-                             item.id.toLowerCase().includes('checkin');
+              // Robust identification of Checkin Equipment
+              const itemName = item.name || '';
+              const itemId = item.id || '';
+              const isCheckin = item.type === EquipmentType.CheckinEquipment || 
+                               itemName.includes('打卡') || 
+                               itemId.toLowerCase().includes('checkin');
 
-            if (isCheckin) {
-              return <FingerprintModel key={item.id} data={item} isSelected={selectedId === item.id} onClick={onItemClick} position={position} isGlobalScanning={isScanning} />;
-            }
-            if (item.type === EquipmentType.AGVCarEquipment || item.name.toLowerCase().includes('agv')) {
-              return <AGVModel key={item.id} data={item} isSelected={selectedId === item.id} onClick={onItemClick} position={position} />;
-            }
-            return <MachineModel key={item.id} data={item} isSelected={selectedId === item.id} onClick={onItemClick} position={position} />;
-          })}
-        </group>
-      ))}
+              if (isCheckin) {
+                return <FingerprintModel key={item.id} data={item} isSelected={selectedId === item.id} onClick={onItemClick} position={position} isGlobalScanning={isScanning} />;
+              }
+              if (item.type === EquipmentType.AGVCarEquipment || itemName.toLowerCase().includes('agv')) {
+                return <AGVModel key={item.id} data={item} isSelected={selectedId === item.id} onClick={onItemClick} position={position} />;
+              }
+              return <MachineModel key={item.id} data={item} isSelected={selectedId === item.id} onClick={onItemClick} position={position} />;
+            })}
+          </group>
+        );
+      })}
 
       <OrbitControls makeDefault minPolarAngle={0} maxPolarAngle={Math.PI / 2.1} />
       <PerspectiveCamera makeDefault position={[0, 25, 40]} fov={45} />
@@ -356,6 +359,7 @@ interface AttendanceLog {
 
 interface Line3DViewProps {
   equipmentList: Equipment[];
+  lines: ProductionLine[];
   onOpenAttendance: (lineId?: string, deviceId?: string) => void;
   onOpenFACA: () => void;
   facaPendingItems: FACAPendingItem[];
@@ -364,6 +368,7 @@ interface Line3DViewProps {
 
 const Line3DView: React.FC<Line3DViewProps> = ({ 
   equipmentList, 
+  lines,
   onOpenAttendance, 
   onOpenFACA,
   facaPendingItems,
@@ -854,7 +859,13 @@ const Line3DView: React.FC<Line3DViewProps> = ({
 
         <div className="w-full h-full">
           <Canvas shadows dpr={[1, 2]}>
-            <FactoryScene equipmentList={localEquipmentList} onItemClick={handleItemClick} selectedId={selectedItem?.id || null} isScanning={isScanning} />
+            <FactoryScene 
+              equipmentList={localEquipmentList} 
+              lines={lines}
+              onItemClick={handleItemClick} 
+              selectedId={selectedItem?.id || null} 
+              isScanning={isScanning} 
+            />
           </Canvas>
         </div>
       </div>
